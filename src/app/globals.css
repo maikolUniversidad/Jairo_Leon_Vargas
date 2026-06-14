@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base neutra (gris claro institucional) */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary = Rojo Pacto Histórico #E30613 */
+    --primary: 356 95% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary = Azul oscuro institucional #102A43 */
+    --secondary: 209 62% 16%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent = Amarillo/dorado #F9C80E */
+    --accent: 49 95% 51%;
+    --accent-foreground: 222 47% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 40%;
+
+    --destructive: 356 95% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 89%;
+    --input: 214 20% 89%;
+    --ring: 356 95% 45%;
+
+    --radius: 0.85rem;
+  }
+
+  .dark {
+    --background: 209 62% 10%;
+    --foreground: 210 20% 96%;
+
+    --card: 209 50% 13%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 209 50% 13%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 356 90% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 209 40% 24%;
+    --secondary-foreground: 210 20% 96%;
+
+    --accent: 49 95% 51%;
+    --accent-foreground: 222 47% 11%;
+
+    --muted: 209 40% 18%;
+    --muted-foreground: 215 18% 65%;
+
+    --destructive: 356 90% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 209 35% 22%;
+    --input: 209 35% 22%;
+    --ring: 356 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
