@@ -9,6 +9,7 @@ import {
   FileText,
   BarChart3,
   Sparkles,
+  Bell,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -33,5 +34,6 @@ export const DASHBOARD_NAV: NavItem[] = [
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText, module: "documentos" },
   { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3, module: "reportes" },
   { href: "/dashboard/ia", label: "Asistente IA", icon: Sparkles, module: "ia" },
+  { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, module: "notificaciones" },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings, module: "configuracion" },
 ];

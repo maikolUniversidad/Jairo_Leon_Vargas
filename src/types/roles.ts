@@ -54,6 +54,7 @@ export type DashboardModule =
   | "documentos"
   | "reportes"
   | "ia"
+  | "notificaciones"
   | "configuracion";
 
 export const MODULE_ACCESS: Record<DashboardModule, AppRole[] | "*"> = {
@@ -119,6 +120,13 @@ export const MODULE_ACCESS: Record<DashboardModule, AppRole[] | "*"> = {
     "coordinador_utl",
     "comunicaciones",
     "juridico_legislativo",
+  ],
+  notificaciones: [
+    "super_admin",
+    "administrador",
+    "direccion_general",
+    "coordinador_utl",
+    "comunicaciones",
   ],
   configuracion: ["super_admin", "administrador"],
 };

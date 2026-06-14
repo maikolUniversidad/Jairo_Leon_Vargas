@@ -2,6 +2,7 @@ import { LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { signOut } from "@/actions/auth";
 import { ROLE_LABELS, type AppRole } from "@/types/roles";
 import { initials } from "@/lib/utils";
@@ -23,7 +24,8 @@ export function Topbar({
           <Badge variant="muted" className="mt-0.5">{ROLE_LABELS[role]}</Badge>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <NotificationBell />
         <div className="hidden text-right sm:block">
           <p className="text-xs text-muted-foreground">{email}</p>
         </div>
