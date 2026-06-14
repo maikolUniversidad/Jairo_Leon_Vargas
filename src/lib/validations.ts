@@ -96,6 +96,111 @@ export const territorialProposalSchema = z.object({
 });
 export type TerritorialProposalInput = z.infer<typeof territorialProposalSchema>;
 
+/* ──────────────── Solicitudes categorizadas (modelo BASE SOLICITUDES) ──────────────── */
+
+export const REQUEST_CATEGORIES = [
+  "salud",
+  "entidad",
+  "hoja_vida",
+  "peticion_general",
+  "apunte",
+] as const;
+export type RequestCategory = (typeof REQUEST_CATEGORIES)[number];
+
+export const REQUEST_CATEGORY_LABELS: Record<RequestCategory, string> = {
+  salud: "Caso de salud",
+  entidad: "Solicitud a entidad",
+  hoja_vida: "Hoja de vida / empleo",
+  peticion_general: "Petición general",
+  apunte: "Apunte / pendiente",
+};
+
+const optText = (max = 200) => z.string().trim().max(max).optional().or(z.literal(""));
+
+/** Formulario público categorizado. Solo `descripcion` es obligatoria además de los datos básicos. */
+export const publicSolicitudSchema = z.object({
+  categoria: z.enum(REQUEST_CATEGORIES, {
+    errorMap: () => ({ message: "Selecciona el tipo de solicitud" }),
+  }),
+  nombre: z.string().trim().min(2, "Ingresa el nombre").max(160),
+  documento: optText(40),
+  telefono,
+  email: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
+  direccion: optText(200),
+  localidad: z.enum(localidadesBogota).optional(),
+  barrio: optText(120),
+  // Específicos por categoría (todos opcionales; el formulario muestra los pertinentes)
+  edad: z.coerce.number().int().min(0).max(120).optional().or(z.literal("")),
+  eps: optText(120),
+  diagnostico: optText(2000),
+  entidad: optText(160),
+  nivel_academico: optText(120),
+  perfil: optText(200),
+  organizacion: optText(160),
+  asunto: optText(160),
+  descripcion: z
+    .string()
+    .trim()
+    .min(10, "Describe la solicitud (mínimo 10 caracteres)")
+    .max(4000),
+  consentimiento_datos: consentimiento,
+});
+export type PublicSolicitudInput = z.infer<typeof publicSolicitudSchema>;
+
+/* ──────────────── Gestión de solicitudes (dashboard) ──────────────── */
+
+export const requestManageSchema = z.object({
+  id: z.string().uuid(),
+  estado: z.enum([
+    "recibida",
+    "clasificada",
+    "asignada",
+    "en_gestion",
+    "respondida",
+    "cerrada",
+    "archivada",
+  ]),
+  prioridad: z.enum(["baja", "media", "alta", "urgente"]),
+  semaforo: z.enum(["verde", "amarillo", "rojo"]),
+  seguimiento: z.coerce.boolean().optional(),
+  responsable_id: z.string().uuid().optional().or(z.literal("")),
+  persona_encargada: optText(160),
+  persona_recibe: optText(160),
+  entidad: optText(160),
+  tramite: optText(2000),
+  fecha_gestion: z.string().optional().or(z.literal("")),
+  fecha_limite: z.string().optional().or(z.literal("")),
+  observaciones: optText(4000),
+  alerta: optText(200),
+});
+export type RequestManageInput = z.infer<typeof requestManageSchema>;
+
+export const requestNoteSchema = z.object({
+  request_id: z.string().uuid(),
+  descripcion: z.string().trim().min(2, "Escribe una nota").max(2000),
+});
+
+/* ──────────────── Eventos (calendario) ──────────────── */
+
+export const eventCreateSchema = z.object({
+  titulo: z.string().trim().min(3, "Título requerido").max(200),
+  descripcion: optText(2000),
+  tipo: optText(60),
+  fecha_inicio: z.string().min(1, "Indica la fecha"),
+  fecha_fin: z.string().optional().or(z.literal("")),
+  lugar: optText(200),
+  modalidad: z.enum(["presencial", "virtual", "mixta"]).default("presencial"),
+  visibilidad: z.enum(["publica", "interna"]).default("interna"),
+  estado: z
+    .enum(["borrador", "confirmado", "reprogramado", "realizado", "cancelado"])
+    .default("confirmado"),
+  link_reunion: optText(300),
+  contexto_operativo: z
+    .enum(["institucional", "campana", "comunitario", "interno", "comunicacional"])
+    .default("comunitario"),
+});
+export type EventCreateInput = z.infer<typeof eventCreateSchema>;
+
 export const eventSignupSchema = z.object({
   event_id: z.string().uuid("Evento inválido"),
   nombre: z.string().trim().min(2, "Ingresa tu nombre").max(120),
@@ -148,3 +253,13 @@ export const taskSchema = z.object({
     .default("interno"),
 });
 export type TaskInput = z.infer<typeof taskSchema>;
+
+export const taskCommentSchema = z.object({
+  task_id: z.string().uuid(),
+  comentario: z.string().trim().min(2, "Escribe un comentario").max(2000),
+});
+
+export const checklistItemSchema = z.object({
+  task_id: z.string().uuid(),
+  texto: z.string().trim().min(1, "Escribe el ítem").max(300),
+});

@@ -69,6 +69,28 @@ export type DocumentStatus =
 
 export type Priority = "baja" | "media" | "alta" | "urgente";
 
+export type Semaforo = "verde" | "amarillo" | "rojo";
+
+export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
+  recibida: "Recibida",
+  clasificada: "Clasificada",
+  asignada: "Asignada",
+  en_gestion: "En gestión",
+  respondida: "Respondida",
+  cerrada: "Cerrada",
+  archivada: "Archivada",
+};
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  pendiente: "Pendiente",
+  en_proceso: "En proceso",
+  bloqueada: "Bloqueada",
+  en_revision: "En revisión",
+  aprobada: "Aprobada",
+  finalizada: "Finalizada",
+  cancelada: "Cancelada",
+};
+
 export type Confidentiality = "publico" | "interno" | "reservado";
 
 export type ZoneType = "localidad" | "barrio" | "upz" | "municipio" | "vereda";
@@ -130,9 +152,70 @@ export interface CitizenRequest {
   respuesta: string | null;
   fecha_cierre: string | null;
   contexto_operativo: ContextoOperativo;
+  // Modelo BASE SOLICITUDES
+  nombre_solicitante: string | null;
+  documento: string | null;
+  telefono: string | null;
+  email: string | null;
+  direccion: string | null;
+  edad: number | null;
+  eps: string | null;
+  diagnostico: string | null;
+  entidad: string | null;
+  nivel_academico: string | null;
+  perfil: string | null;
+  organizacion: string | null;
+  tramite: string | null;
+  fecha_gestion: string | null;
+  observaciones: string | null;
+  persona_remite: string | null;
+  persona_encargada: string | null;
+  persona_recibe: string | null;
+  semaforo: Semaforo;
+  seguimiento: boolean;
+  alerta: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+}
+
+export interface RequestHistory {
+  id: string;
+  request_id: string;
+  tipo: string;
+  descripcion: string | null;
+  estado_anterior: string | null;
+  estado_nuevo: string | null;
+  author_id: string | null;
+  created_at: string;
+}
+
+export interface TaskHistory {
+  id: string;
+  task_id: string;
+  tipo: string;
+  descripcion: string | null;
+  estado_anterior: string | null;
+  estado_nuevo: string | null;
+  author_id: string | null;
+  created_at: string;
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  author_id: string | null;
+  comentario: string;
+  created_at: string;
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  task_id: string;
+  texto: string;
+  completado: boolean;
+  orden: number;
+  created_at: string;
 }
 
 export interface Task {
@@ -150,6 +233,7 @@ export interface Task {
   evento_id: string | null;
   zona_id: string | null;
   etiquetas: string[] | null;
+  orden: number;
   contexto_operativo: ContextoOperativo;
   created_at: string;
   updated_at: string;

@@ -1,61 +1,78 @@
-import { CalendarDays } from "lucide-react";
-
-import { PageHeader, EmptyState } from "@/components/dashboard/shared";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/dashboard/shared";
+import { CalendarView, type CalItem } from "@/components/dashboard/calendar-view";
+import { EventCreateDialog } from "@/components/dashboard/event-create-dialog";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/utils";
-import type { CalendarEvent } from "@/types/database";
+import type { CalendarEvent, Task, CitizenRequest } from "@/types/database";
 
-async function getEvents(): Promise<CalendarEvent[]> {
+async function getItems(): Promise<CalItem[]> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("events")
-      .select("*")
-      .is("deleted_at", null)
-      .order("fecha_inicio", { ascending: true })
-      .limit(100);
-    return (data as CalendarEvent[]) ?? [];
+    const [{ data: events }, { data: tasks }, { data: requests }] = await Promise.all([
+      supabase.from("events").select("*").is("deleted_at", null).limit(500),
+      supabase
+        .from("tasks")
+        .select("id,titulo,fecha_limite,estado")
+        .is("deleted_at", null)
+        .not("fecha_limite", "is", null)
+        .limit(500),
+      supabase
+        .from("requests")
+        .select("id,radicado,asunto,fecha_limite,fecha_gestion")
+        .is("deleted_at", null)
+        .limit(500),
+    ]);
+
+    const items: CalItem[] = [];
+
+    for (const e of (events as CalendarEvent[]) ?? []) {
+      items.push({
+        id: `ev-${e.id}`,
+        date: e.fecha_inicio,
+        title: e.titulo,
+        kind: "evento",
+        meta: e.tipo,
+        lugar: e.lugar,
+        modalidad: e.modalidad,
+      });
+    }
+    for (const t of (tasks as Pick<Task, "id" | "titulo" | "fecha_limite" | "estado">[]) ?? []) {
+      if (!t.fecha_limite) continue;
+      if (["finalizada", "cancelada"].includes(t.estado)) continue;
+      items.push({
+        id: `tk-${t.id}`,
+        date: t.fecha_limite,
+        title: `Vence: ${t.titulo}`,
+        kind: "tarea",
+      });
+    }
+    for (const r of (requests as Pick<CitizenRequest, "id" | "radicado" | "asunto" | "fecha_limite" | "fecha_gestion">[]) ?? []) {
+      const date = r.fecha_limite ?? r.fecha_gestion;
+      if (!date) continue;
+      items.push({
+        id: `rq-${r.id}`,
+        date,
+        title: r.asunto,
+        kind: "solicitud",
+        meta: r.radicado,
+      });
+    }
+    return items;
   } catch {
     return [];
   }
 }
 
 export default async function CalendarioPage() {
-  const events = await getEvents();
+  const items = await getItems();
 
   return (
     <>
       <PageHeader
-        title="Calendario interno"
-        description="Agenda del despacho y del equipo: reuniones, recorridos y eventos."
+        title="Calendario"
+        description="Agenda del equipo: eventos, vencimientos de tareas y fechas de gestión de solicitudes."
+        action={<EventCreateDialog />}
       />
-      {events.length === 0 ? (
-        <EmptyState icon={CalendarDays} title="Sin eventos" description="Crea eventos para coordinar la agenda del equipo." />
-      ) : (
-        <div className="grid gap-3">
-          {events.map((ev) => (
-            <Card key={ev.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="muted">{ev.tipo}</Badge>
-                    <Badge variant={ev.visibilidad === "publica" ? "success" : "secondary"}>
-                      {ev.visibilidad}
-                    </Badge>
-                  </div>
-                  <h3 className="mt-1 font-medium">{ev.titulo}</h3>
-                  {ev.lugar && <p className="text-sm text-muted-foreground">{ev.lugar}</p>}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {formatDate(ev.fecha_inicio, { dateStyle: "medium", timeStyle: "short" })}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <CalendarView items={items} />
     </>
   );
 }

@@ -21,11 +21,14 @@ import {
 } from "@/components/ui/select";
 import {
   citizenRegisterSchema,
-  citizenRequestSchema,
+  publicSolicitudSchema,
   territorialProposalSchema,
   LOCALIDADES,
+  REQUEST_CATEGORIES,
+  REQUEST_CATEGORY_LABELS,
   type CitizenRegisterInput,
-  type CitizenRequestInput,
+  type PublicSolicitudInput,
+  type RequestCategory,
   type TerritorialProposalInput,
 } from "@/lib/validations";
 import { registerCitizen } from "@/actions/ciudadanos";
@@ -173,14 +176,29 @@ function RegistroForm() {
   );
 }
 
-/* ───────────────── Solicitud ───────────────── */
+/* ───────────────── Solicitud categorizada (BASE SOLICITUDES) ───────────────── */
+const CATEGORY_HINT: Record<RequestCategory, string> = {
+  salud: "Casos de salud: citas, autorizaciones, medicamentos, EPS.",
+  entidad: "Trámites ante una entidad (acueducto, energía, alcaldía…).",
+  hoja_vida: "Recepción de hojas de vida y oportunidades laborales.",
+  peticion_general: "Donaciones, apoyos, solicitudes a la organización.",
+  apunte: "Pendientes y notas rápidas para gestionar luego.",
+};
+
 function SolicitudForm() {
   const [pending, start] = useTransition();
   const [radicado, setRadicado] = useState<string | null>(null);
-  const { register, handleSubmit, setValue, reset, formState } =
-    useForm<CitizenRequestInput>({ resolver: zodResolver(citizenRequestSchema) });
+  const { register, handleSubmit, setValue, watch, reset, formState } =
+    useForm<PublicSolicitudInput>({ resolver: zodResolver(publicSolicitudSchema) });
+
+  const categoria = watch("categoria");
 
   if (radicado) return <RadicadoOk radicado={radicado} onReset={() => { reset(); setRadicado(null); }} />;
+
+  const showSalud = categoria === "salud";
+  const showHV = categoria === "hoja_vida";
+  const showEntidad = categoria === "entidad";
+  const showOrg = categoria === "peticion_general" || categoria === "apunte";
 
   return (
     <form
@@ -193,37 +211,44 @@ function SolicitudForm() {
         }),
       )}
     >
+      <div className="sm:col-span-2">
+        <Label>Tipo de solicitud *</Label>
+        <Select onValueChange={(v) => setValue("categoria", v as RequestCategory, { shouldValidate: true })}>
+          <SelectTrigger><SelectValue placeholder="¿Qué necesitas gestionar?" /></SelectTrigger>
+          <SelectContent>
+            {REQUEST_CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>{REQUEST_CATEGORY_LABELS[c]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {categoria && (
+          <p className="mt-1 text-xs text-muted-foreground">{CATEGORY_HINT[categoria]}</p>
+        )}
+        <FieldError msg={formState.errors.categoria?.message} />
+      </div>
+
       <div>
-        <Label htmlFor="s-nombre">Nombre *</Label>
+        <Label htmlFor="s-nombre">Nombre de la persona *</Label>
         <Input id="s-nombre" {...register("nombre")} />
         <FieldError msg={formState.errors.nombre?.message} />
       </div>
       <div>
-        <Label>Tipo de solicitud *</Label>
-        <Select onValueChange={(v) => setValue("tipo_solicitud", v as CitizenRequestInput["tipo_solicitud"])}>
-          <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="servicio">Servicio / atención</SelectItem>
-            <SelectItem value="propuesta">Propuesta</SelectItem>
-            <SelectItem value="agenda">Agenda / evento</SelectItem>
-            <SelectItem value="prensa">Prensa</SelectItem>
-            <SelectItem value="peticion_formal">Petición formal</SelectItem>
-            <SelectItem value="otro">Otro</SelectItem>
-          </SelectContent>
-        </Select>
-        <FieldError msg={formState.errors.tipo_solicitud?.message} />
-      </div>
-      <div>
-        <Label htmlFor="s-email">Correo</Label>
-        <Input id="s-email" type="email" {...register("email")} />
+        <Label htmlFor="s-doc">Documento</Label>
+        <Input id="s-doc" {...register("documento")} />
       </div>
       <div>
         <Label htmlFor="s-tel">Teléfono</Label>
         <Input id="s-tel" {...register("telefono")} />
+        <FieldError msg={formState.errors.telefono?.message} />
+      </div>
+      <div>
+        <Label htmlFor="s-email">Correo</Label>
+        <Input id="s-email" type="email" {...register("email")} />
+        <FieldError msg={formState.errors.email?.message} />
       </div>
       <div>
         <Label>Localidad</Label>
-        <Select onValueChange={(v) => setValue("localidad", v as CitizenRequestInput["localidad"])}>
+        <Select onValueChange={(v) => setValue("localidad", v as PublicSolicitudInput["localidad"])}>
           <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
           <SelectContent>
             {LOCALIDADES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
@@ -234,13 +259,55 @@ function SolicitudForm() {
         <Label htmlFor="s-barrio">Barrio</Label>
         <Input id="s-barrio" {...register("barrio")} />
       </div>
+
+      {/* Campos específicos por categoría */}
+      {showSalud && (
+        <>
+          <div>
+            <Label htmlFor="s-edad">Edad</Label>
+            <Input id="s-edad" type="number" {...register("edad")} />
+          </div>
+          <div>
+            <Label htmlFor="s-eps">EPS</Label>
+            <Input id="s-eps" {...register("eps")} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="s-diag">Diagnóstico (si aplica)</Label>
+            <Input id="s-diag" {...register("diagnostico")} />
+          </div>
+        </>
+      )}
+      {showHV && (
+        <>
+          <div>
+            <Label htmlFor="s-nivel">Nivel académico</Label>
+            <Input id="s-nivel" placeholder="Bachiller, técnico, profesional…" {...register("nivel_academico")} />
+          </div>
+          <div>
+            <Label htmlFor="s-perfil">Perfil / cargo</Label>
+            <Input id="s-perfil" {...register("perfil")} />
+          </div>
+        </>
+      )}
+      {showEntidad && (
+        <div className="sm:col-span-2">
+          <Label htmlFor="s-entidad">Entidad</Label>
+          <Input id="s-entidad" placeholder="Acueducto, Codensa, Secretaría…" {...register("entidad")} />
+        </div>
+      )}
+      {showOrg && (
+        <div className="sm:col-span-2">
+          <Label htmlFor="s-org">Organización (si aplica)</Label>
+          <Input id="s-org" {...register("organizacion")} />
+        </div>
+      )}
+
       <div className="sm:col-span-2">
-        <Label htmlFor="s-asunto">Asunto *</Label>
-        <Input id="s-asunto" {...register("asunto")} />
-        <FieldError msg={formState.errors.asunto?.message} />
+        <Label htmlFor="s-asunto">Asunto breve</Label>
+        <Input id="s-asunto" placeholder="Resumen en una línea (opcional)" {...register("asunto")} />
       </div>
       <div className="sm:col-span-2">
-        <Label htmlFor="s-desc">Describe tu caso *</Label>
+        <Label htmlFor="s-desc">Describe la solicitud con detalle *</Label>
         <Textarea id="s-desc" rows={5} {...register("descripcion")} />
         <FieldError msg={formState.errors.descripcion?.message} />
       </div>
