@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { type ActionResult } from "./types";
 
-type Bucket = "task-files" | "contact-files" | "workspace-covers" | "coberturas" | "documentos";
+type Bucket = "task-files" | "contact-files" | "workspace-covers" | "coberturas" | "documentos" | "avatars";
 
 /**
  * Crea una URL de subida firmada para que el navegador suba el archivo

@@ -1941,10 +1941,19 @@ drop policy if exists doc_folders_read on public.document_folders;
 create policy doc_folders_read on public.document_folders for select to authenticated
   using (public.is_staff() and deleted_at is null and public.can_access_folder(id));
 
+-- IMPORTANTE: la escritura se define POR COMANDO (no FOR ALL), porque una
+-- política FOR ALL también rige el SELECT (se combina con OR) y dejaría ver
+-- TODAS las carpetas a los gestores. Así la visibilidad la rige solo *_read.
 drop policy if exists doc_folders_write on public.document_folders;
-create policy doc_folders_write on public.document_folders for all to authenticated
-  using (public.can_manage_documents())
+drop policy if exists doc_folders_insert on public.document_folders;
+create policy doc_folders_insert on public.document_folders for insert to authenticated
   with check (public.can_manage_documents());
+drop policy if exists doc_folders_update on public.document_folders;
+create policy doc_folders_update on public.document_folders for update to authenticated
+  using (public.can_manage_documents()) with check (public.can_manage_documents());
+drop policy if exists doc_folders_delete on public.document_folders;
+create policy doc_folders_delete on public.document_folders for delete to authenticated
+  using (public.can_manage_documents());
 
 -- ─────────────── RLS: documents (reescrita con acceso por carpeta) ───────────────
 drop policy if exists documents_read on public.documents;
@@ -1966,13 +1975,18 @@ create policy documents_read on public.documents for select to authenticated
     )
   );
 
+-- Escritura por comando (ver nota arriba): el SELECT lo rige solo documents_read.
 drop policy if exists documents_write on public.documents;
-create policy documents_write on public.documents for all to authenticated
+drop policy if exists documents_insert on public.documents;
+create policy documents_insert on public.documents for insert to authenticated
+  with check (public.is_staff() and (public.can_manage_documents() or creado_por = auth.uid()));
+drop policy if exists documents_update on public.documents;
+create policy documents_update on public.documents for update to authenticated
   using (public.can_manage_documents() or creado_por = auth.uid())
-  with check (
-    public.is_staff()
-    and (public.can_manage_documents() or creado_por = auth.uid())
-  );
+  with check (public.is_staff() and (public.can_manage_documents() or creado_por = auth.uid()));
+drop policy if exists documents_delete on public.documents;
+create policy documents_delete on public.documents for delete to authenticated
+  using (public.can_manage_documents() or creado_por = auth.uid());
 
 -- ─────────────── Triggers: updated_at + auditoría ───────────────
 drop trigger if exists trg_document_folders_updated on public.document_folders;
@@ -2091,3 +2105,59 @@ drop policy if exists "utl write coberturas" on storage.objects;
 create policy "utl write coberturas" on storage.objects for insert to authenticated with check (bucket_id = 'coberturas');
 drop policy if exists "utl delete coberturas" on storage.objects;
 create policy "utl delete coberturas" on storage.objects for delete to authenticated using (bucket_id = 'coberturas');
+
+-- ===== 0015_documents_drive.sql =====
+-- ============================================================================
+-- UTL 360 · 0015_documents_drive.sql
+-- Vincula el módulo de Documentos con Google Drive: cada carpeta documental
+-- espeja una carpeta en Drive (bajo "03 Documentos") y los documentos no
+-- reservados se guardan ahí. El control por roles sigue rigiendo en la app (RLS).
+-- Ejecuta DESPUÉS de 0014.
+-- ============================================================================
+
+alter table public.document_folders add column if not exists drive_folder_id text;
+alter table public.documents add column if not exists drive_file_id text;
+
+-- ===== 0016_profiles_module.sql =====
+-- ============================================================================
+-- UTL 360 · 0016_profiles_module.sql
+-- Módulo de Perfil de usuario: datos personales ampliados, foto (bucket público
+-- 'avatars') y auditoría de cambios. Cada usuario edita su propia ficha; el
+-- admin tiene registro y control de todos (RLS existente en 0003).
+-- Ejecuta DESPUÉS de 0015. Idempotente.
+-- ============================================================================
+
+-- ─────────────── Campos adicionales del perfil ───────────────
+alter table public.profiles
+  add column if not exists cargo         text,   -- cargo/rol funcional en la UTL
+  add column if not exists documento     text,   -- documento de identidad
+  add column if not exists bio           text,   -- breve descripción
+  add column if not exists direccion     text,
+  add column if not exists fecha_ingreso date;
+
+-- ─────────────── Auditoría de cambios de perfil ───────────────
+drop trigger if exists trg_profiles_audit on public.profiles;
+create trigger trg_profiles_audit
+  after insert or update or delete on public.profiles
+  for each row execute function public.log_audit_event();
+
+-- ─────────────── Bucket público de avatares ───────────────
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('avatars','avatars', true, 5242880)   -- 5 MB, público (se muestran en la UI)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
+
+drop policy if exists "utl read avatars" on storage.objects;
+create policy "utl read avatars" on storage.objects for select to public
+  using (bucket_id = 'avatars');
+
+drop policy if exists "utl write avatars" on storage.objects;
+create policy "utl write avatars" on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars');
+
+drop policy if exists "utl update avatars" on storage.objects;
+create policy "utl update avatars" on storage.objects for update to authenticated
+  using (bucket_id = 'avatars');
+
+drop policy if exists "utl delete avatars" on storage.objects;
+create policy "utl delete avatars" on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars');

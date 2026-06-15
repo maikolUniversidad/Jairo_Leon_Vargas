@@ -53,6 +53,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       .eq("can_view", true);
     viewableModules = Array.from(new Set((perms ?? []).map((p) => p.module as string)));
   }
+  // "Mi perfil" siempre disponible para cualquier usuario autenticado.
+  if (!viewableModules.includes("perfil")) viewableModules.push("perfil");
 
   return {
     id: user.id,

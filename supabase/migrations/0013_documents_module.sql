@@ -73,10 +73,19 @@ drop policy if exists doc_folders_read on public.document_folders;
 create policy doc_folders_read on public.document_folders for select to authenticated
   using (public.is_staff() and deleted_at is null and public.can_access_folder(id));
 
+-- IMPORTANTE: la escritura se define POR COMANDO (no FOR ALL), porque una
+-- política FOR ALL también rige el SELECT (se combina con OR) y dejaría ver
+-- TODAS las carpetas a los gestores. Así la visibilidad la rige solo *_read.
 drop policy if exists doc_folders_write on public.document_folders;
-create policy doc_folders_write on public.document_folders for all to authenticated
-  using (public.can_manage_documents())
+drop policy if exists doc_folders_insert on public.document_folders;
+create policy doc_folders_insert on public.document_folders for insert to authenticated
   with check (public.can_manage_documents());
+drop policy if exists doc_folders_update on public.document_folders;
+create policy doc_folders_update on public.document_folders for update to authenticated
+  using (public.can_manage_documents()) with check (public.can_manage_documents());
+drop policy if exists doc_folders_delete on public.document_folders;
+create policy doc_folders_delete on public.document_folders for delete to authenticated
+  using (public.can_manage_documents());
 
 -- ─────────────── RLS: documents (reescrita con acceso por carpeta) ───────────────
 drop policy if exists documents_read on public.documents;
@@ -98,13 +107,18 @@ create policy documents_read on public.documents for select to authenticated
     )
   );
 
+-- Escritura por comando (ver nota arriba): el SELECT lo rige solo documents_read.
 drop policy if exists documents_write on public.documents;
-create policy documents_write on public.documents for all to authenticated
+drop policy if exists documents_insert on public.documents;
+create policy documents_insert on public.documents for insert to authenticated
+  with check (public.is_staff() and (public.can_manage_documents() or creado_por = auth.uid()));
+drop policy if exists documents_update on public.documents;
+create policy documents_update on public.documents for update to authenticated
   using (public.can_manage_documents() or creado_por = auth.uid())
-  with check (
-    public.is_staff()
-    and (public.can_manage_documents() or creado_por = auth.uid())
-  );
+  with check (public.is_staff() and (public.can_manage_documents() or creado_por = auth.uid()));
+drop policy if exists documents_delete on public.documents;
+create policy documents_delete on public.documents for delete to authenticated
+  using (public.can_manage_documents() or creado_por = auth.uid());
 
 -- ─────────────── Triggers: updated_at + auditoría ───────────────
 drop trigger if exists trg_document_folders_updated on public.document_folders;

@@ -11,6 +11,7 @@ import {
   BarChart3,
   Sparkles,
   Bell,
+  UserCircle,
   Settings,
   type LucideIcon,
 } from "lucide-react";

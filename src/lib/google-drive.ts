@@ -174,6 +174,20 @@ export async function createCoberturaFolders(nombre: string): Promise<CoberturaF
   return { root, crudo, editado, aprobado, link: `https://drive.google.com/drive/folders/${root}` };
 }
 
+/** Crea una subcarpeta en Drive (por id de padre). Devuelve su id o null si no hay conexión. */
+export async function createDriveSubfolder(parentId: string, name: string): Promise<string | null> {
+  const drive = await getDrive();
+  if (!drive) return null;
+  return createFolder(drive, name, parentId);
+}
+
+/** Id de la carpeta "03 Documentos" (o la raíz si falta). Null si Drive no está conectado. */
+export async function getDocumentosRootId(): Promise<string | null> {
+  const cfg = await getDriveConfig();
+  if (!cfg.connected) return null;
+  return cfg.folders?.documentos ?? cfg.root_folder_id ?? null;
+}
+
 /** Sube un buffer a una carpeta concreta de Drive (por id). */
 export async function uploadBufferToFolder(opts: {
   folderId: string;

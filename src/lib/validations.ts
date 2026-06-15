@@ -289,6 +289,21 @@ export const checklistItemSchema = z.object({
   texto: z.string().trim().min(1, "Escribe el ítem").max(300),
 });
 
+/* ──────────────── Perfil de usuario (autoedición) ──────────────── */
+
+export const profileSchema = z.object({
+  full_name: z.string().trim().min(2, "Tu nombre es requerido").max(160),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  cargo: z.string().trim().max(120).optional().or(z.literal("")),
+  documento: z.string().trim().max(40).optional().or(z.literal("")),
+  direccion: z.string().trim().max(200).optional().or(z.literal("")),
+  bio: z.string().trim().max(1000).optional().or(z.literal("")),
+  area_id: z.string().uuid().optional().or(z.literal("")),
+  fecha_ingreso: z.string().optional().or(z.literal("")),
+  avatar_url: z.string().trim().optional().or(z.literal("")),
+});
+export type ProfileInput = z.infer<typeof profileSchema>;
+
 /* ──────────────── Documentos ──────────────── */
 
 const APP_ROLES = [

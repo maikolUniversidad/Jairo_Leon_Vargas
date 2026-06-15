@@ -102,6 +102,11 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   area_id: string | null;
+  cargo: string | null;
+  documento: string | null;
+  bio: string | null;
+  direccion: string | null;
+  fecha_ingreso: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -298,6 +303,7 @@ export interface DocumentFolder {
   parent_id: string | null;
   /** Roles que pueden ver la carpeta. Vacío = visible a todo el staff. */
   allowed_roles: AppRole[];
+  drive_folder_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -317,6 +323,7 @@ export interface DocumentRecord {
   folder_id: string | null;
   descripcion: string | null;
   storage_path: string | null;
+  drive_file_id: string | null;
   original_name: string | null;
   mime: string | null;
   size: number | null;
