@@ -1,3 +1,5 @@
+import Link from "next/link";
+import Image from "next/image";
 import { LogOut } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,10 +13,12 @@ export function Topbar({
   name,
   email,
   role,
+  avatarUrl,
 }: {
   name: string | null;
   email: string | null;
   role: AppRole | null;
+  avatarUrl?: string | null;
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 pl-16 backdrop-blur lg:px-6 lg:pl-6">
@@ -29,9 +33,26 @@ export function Topbar({
         <div className="hidden text-right sm:block">
           <p className="text-xs text-muted-foreground">{email}</p>
         </div>
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-          {initials(name)}
-        </span>
+        <Link
+          href="/dashboard/perfil"
+          title="Mi perfil"
+          className="rounded-full ring-offset-background transition hover:ring-2 hover:ring-primary/40 hover:ring-offset-2"
+        >
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={name ?? "Mi perfil"}
+              width={36}
+              height={36}
+              unoptimized
+              className="size-9 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+              {initials(name)}
+            </span>
+          )}
+        </Link>
         <form action={signOut}>
           <Button type="submit" variant="outline" size="sm">
             <LogOut className="size-4" /> Salir

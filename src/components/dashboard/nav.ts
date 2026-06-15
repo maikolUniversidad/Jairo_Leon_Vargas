@@ -9,6 +9,7 @@ import {
   Megaphone,
   FileText,
   BarChart3,
+  ShieldCheck,
   Sparkles,
   Bell,
   UserCircle,
@@ -36,7 +37,9 @@ export const DASHBOARD_NAV: NavItem[] = [
   { href: "/dashboard/comunicaciones", label: "Comunicaciones", icon: Megaphone, module: "comunicaciones" },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText, module: "documentos" },
   { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3, module: "reportes" },
+  { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck, module: "auditoria" },
   { href: "/dashboard/ia", label: "Asistente IA", icon: Sparkles, module: "ia" },
   { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, module: "notificaciones" },
+  { href: "/dashboard/perfil", label: "Mi perfil", icon: UserCircle, module: "perfil" },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings, module: "configuracion" },
 ];

@@ -11,6 +11,9 @@ export interface ManagedUser {
   id: string;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
+  cargo: string | null;
+  avatar_url: string | null;
   is_active: boolean;
   role_key: string | null;
   role_label: string | null;
@@ -26,7 +29,7 @@ export async function listUsers(): Promise<ManagedUser[]> {
   if (!(await assertAdmin())) return [];
   const supabase = await createClient();
   const [{ data: profiles }, { data: roles }, { data: catalog }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email, is_active"),
+    supabase.from("profiles").select("id, full_name, email, phone, cargo, avatar_url, is_active"),
     supabase.from("user_roles").select("user_id, role_key"),
     supabase.from("roles_catalog").select("key, label"),
   ]);
@@ -44,6 +47,9 @@ export async function listUsers(): Promise<ManagedUser[]> {
       id: p.id,
       full_name: p.full_name,
       email: p.email,
+      phone: (p as { phone: string | null }).phone,
+      cargo: (p as { cargo: string | null }).cargo,
+      avatar_url: (p as { avatar_url: string | null }).avatar_url,
       is_active: p.is_active,
       role_key: rk,
       role_label: rk ? labelByKey.get(rk) ?? rk : null,

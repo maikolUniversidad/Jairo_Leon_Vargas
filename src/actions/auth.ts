@@ -17,13 +17,23 @@ export async function signIn(raw: unknown): Promise<ActionResult> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) {
     return { ok: false, message: "Correo o contraseña incorrectos." };
+  }
+
+  try {
+    await supabase.from("activity_log").insert({
+      user_id: data.user?.id ?? null,
+      accion: "login",
+      detalle: "Inicio de sesión",
+    });
+  } catch {
+    /* best-effort */
   }
 
   return { ok: true, message: "Sesión iniciada." };

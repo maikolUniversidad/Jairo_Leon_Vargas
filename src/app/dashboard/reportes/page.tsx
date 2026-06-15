@@ -1,22 +1,26 @@
-import { PageHeader, ModuleScaffold } from "@/components/dashboard/shared";
+import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/dashboard/shared";
+import { ReportesView } from "@/components/dashboard/reportes-view";
+import { getGeneralReport, listReportUsers } from "@/actions/reportes";
 
-export default function ReportesPage() {
+export default async function ReportesPage() {
+  await requireRole([
+    "super_admin",
+    "administrador",
+    "direccion_general",
+    "coordinador_utl",
+    "analitica_reportes",
+  ]);
+
+  const [general, users] = await Promise.all([getGeneralReport(), listReportUsers()]);
+
   return (
     <>
       <PageHeader
         title="Reportes"
-        description="Indicadores por fecha, localidad, área, responsable, tipo y estado."
+        description="Indicadores de la operación y reportes individuales por persona. Exporta a CSV."
       />
-      <ModuleScaffold
-        title="Reportes"
-        pending={[
-          "Filtros combinables (fecha, localidad, área, responsable, tipo, estado, prioridad, contexto)",
-          "Gráficos de evolución de solicitudes y tareas",
-          "Mapa de calor por localidad",
-          "Exportación a CSV y PDF",
-          "Tablero ejecutivo con SLA y conversiones de la landing (GA4)",
-        ]}
-      />
+      <ReportesView general={general} users={users} />
     </>
   );
 }

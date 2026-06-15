@@ -10,6 +10,7 @@ import {
   uploadBufferToFolder,
 } from "@/lib/google-drive";
 import { getSessionUser } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { documentFolderSchema, documentSchema } from "@/lib/validations";
 import { type ActionResult, zodToFieldErrors } from "./types";
 
@@ -207,6 +208,7 @@ export async function createDocument(raw: unknown): Promise<ActionResult> {
     creado_por: user.id,
   });
   if (error) return { ok: false, message: "No se pudo guardar el documento (¿permisos?)." };
+  await logActivity("subida", "documento", undefined, v.titulo);
   revalidatePath("/dashboard/documentos");
   return { ok: true, message: "Documento guardado." };
 }
@@ -306,6 +308,7 @@ export async function getDocumentDownloadUrl(
 
   if (!doc) return { ok: false, message: "No tienes acceso a este documento." };
 
+  await logActivity("descarga", "documento", id);
   const row = doc as { storage_path: string | null; archivo_url: string | null };
   if (row.storage_path) {
     const admin = createAdminClient();

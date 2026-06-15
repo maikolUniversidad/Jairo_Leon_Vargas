@@ -18,6 +18,7 @@ export default async function DashboardLayout({
           name={user.profile?.full_name ?? null}
           email={user.email}
           role={user.primaryRole}
+          avatarUrl={user.profile?.avatar_url ?? null}
         />
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>

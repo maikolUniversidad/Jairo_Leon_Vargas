@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity";
 import {
   taskSchema,
   taskCommentSchema,
@@ -164,6 +165,7 @@ export async function addTaskAttachment(input: {
     created_by: user?.id ?? null,
   });
   if (error) return { ok: false, message: "No se pudo guardar el adjunto (¿permisos?)." };
+  await logActivity("subida", "tarea", input.task_id, input.nombre);
   revalidatePath("/dashboard/tareas");
   return { ok: true, message: "Adjunto agregado." };
 }

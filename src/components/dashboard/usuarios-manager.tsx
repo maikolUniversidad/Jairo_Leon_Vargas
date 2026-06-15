@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { toast } from "sonner";
 import { UserPlus, Check, X } from "lucide-react";
 
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { initials } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -102,6 +104,7 @@ export function UsuariosManager({
             <TableHeader>
               <TableRow>
                 <TableHead>Usuario</TableHead>
+                <TableHead>Contacto</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acción</TableHead>
@@ -111,8 +114,30 @@ export function UsuariosManager({
               {users.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell>
-                    <span className="font-medium">{u.full_name || "—"}</span>
+                    <div className="flex items-center gap-3">
+                      {u.avatar_url ? (
+                        <Image
+                          src={u.avatar_url}
+                          alt={u.full_name ?? "Usuario"}
+                          width={36}
+                          height={36}
+                          unoptimized
+                          className="size-9 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                          {initials(u.full_name || u.email)}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <span className="font-medium">{u.full_name || "—"}</span>
+                        {u.cargo && <span className="block text-xs text-muted-foreground">{u.cargo}</span>}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     <span className="block text-xs text-muted-foreground">{u.email}</span>
+                    {u.phone && <span className="block text-xs text-muted-foreground">{u.phone}</span>}
                   </TableCell>
                   <TableCell>
                     <Select

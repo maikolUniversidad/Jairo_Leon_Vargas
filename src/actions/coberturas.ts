@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCoberturaFolders, uploadBufferToFolder, getDriveConfig } from "@/lib/google-drive";
+import { logActivity } from "@/lib/activity";
 import { type ActionResult } from "./types";
 
 export type Fase = "crudo" | "editado" | "aprobado";
@@ -214,6 +215,7 @@ export async function addCoberturaFile(input: {
   });
   if (error) return { ok: false, message: "No se pudo registrar el archivo." };
 
+  await logActivity("subida", "cobertura", input.cobertura_id, `${input.fase}: ${input.name}`);
   revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
   return { ok: true, message: "Archivo agregado." };
 }
