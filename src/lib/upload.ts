@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { createSignedUpload } from "@/actions/storage";
+import { finalizeToDrive } from "@/actions/google";
 
 type Bucket = "task-files" | "contact-files" | "workspace-covers";
 
@@ -36,11 +37,13 @@ export async function uploadFileViaSignedUrl(
     });
   if (error) return { ok: false, message: `No se pudo subir: ${error.message}` };
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(signed.data.path);
+  // Si Google Drive está conectado, mueve el archivo a Drive y usa su enlace.
+  const fin = await finalizeToDrive(bucket, signed.data.path, file.name, file.type);
+
   return {
     ok: true,
-    url: data.publicUrl,
-    path: signed.data.path,
+    url: fin.url,
+    path: fin.storage_path ?? undefined,
     name: file.name,
     mime: file.type,
     size: file.size,
