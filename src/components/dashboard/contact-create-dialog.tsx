@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { initials } from "@/lib/utils";
 import { CONTACT_TIPOS, CONTACT_TIPO_LABELS } from "@/types/database";
-import { uploadToBucket } from "@/actions/storage";
+import { uploadFileViaSignedUrl } from "@/lib/upload";
 import { createContact } from "@/actions/contactos";
 
 interface ZoneOpt { id: string; nombre_zona: string }
@@ -46,11 +46,8 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
   async function uploadFoto(file: File) {
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("prefix", "fotos");
-      const up = await uploadToBucket("contact-files", fd);
-      if (up.ok && up.data) setFoto(up.data.url);
+      const up = await uploadFileViaSignedUrl("contact-files", "fotos", file);
+      if (up.ok && up.url) setFoto(up.url);
       else toast.error(up.message);
     } finally { setUploading(false); }
   }

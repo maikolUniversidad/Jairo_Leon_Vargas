@@ -18,7 +18,7 @@ import {
   FileText,
 } from "lucide-react";
 
-import { uploadToBucket } from "@/actions/storage";
+import { uploadFileViaSignedUrl } from "@/lib/upload";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,14 +250,11 @@ function TaskDetailDialog({
   async function uploadFile(file: File) {
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("prefix", task.id);
-      const up = await uploadToBucket("task-files", fd);
-      if (!up.ok || !up.data) { toast.error(up.message); return; }
+      const up = await uploadFileViaSignedUrl("task-files", task.id, file);
+      if (!up.ok || !up.url) { toast.error(up.message); return; }
       const res = await addTaskAttachment({
-        task_id: task.id, tipo: "archivo", nombre: up.data.name,
-        url: up.data.url, storage_path: up.data.path, mime: up.data.mime, size: up.data.size,
+        task_id: task.id, tipo: "archivo", nombre: up.name!,
+        url: up.url, storage_path: up.path, mime: up.mime, size: up.size,
       });
       if (res.ok) load(); else toast.error(res.message);
     } finally {

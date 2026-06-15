@@ -1,47 +1,36 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { type ActionResult } from "./types";
 
 type Bucket = "task-files" | "contact-files" | "workspace-covers";
 
 /**
- * Sube un archivo a Storage desde el servidor (sesión garantizada por cookies),
- * evitando problemas de RLS cuando el cliente del navegador no adjunta el token.
- * Recibe FormData con `file` y un `prefix` opcional para la ruta.
+ * Crea una URL de subida firmada para que el navegador suba el archivo
+ * DIRECTO a Supabase Storage (sin pasar por Vercel → sin límite de 4.5 MB
+ * de los server actions, y sin problemas de RLS porque el token autoriza).
+ * El servidor solo verifica sesión y reserva la ruta.
  */
-export async function uploadToBucket(
+export async function createSignedUpload(
   bucket: Bucket,
-  formData: FormData,
-): Promise<ActionResult<{ url: string; path: string; name: string; mime: string; size: number }>> {
-  const file = formData.get("file");
-  const prefix = (formData.get("prefix") as string | null)?.replace(/[^a-zA-Z0-9/_-]/g, "") || "general";
-
-  if (!(file instanceof File)) return { ok: false, message: "No se recibió el archivo." };
-  if (file.size === 0) return { ok: false, message: "El archivo está vacío." };
-
+  prefix: string,
+  filename: string,
+): Promise<ActionResult<{ path: string; token: string }>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Sesión no válida." };
 
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${prefix}/${Date.now()}-${safe}`;
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const safePrefix = (prefix || "general").replace(/[^a-zA-Z0-9/_-]/g, "");
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${safePrefix}/${Date.now()}-${safeName}`;
 
-  const { error } = await supabase.storage.from(bucket).upload(path, bytes, {
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-  if (error) {
-    return { ok: false, message: `No se pudo subir: ${error.message}` };
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(path);
+  if (error || !data) {
+    return { ok: false, message: `No se pudo preparar la subida: ${error?.message ?? ""}` };
   }
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return {
-    ok: true,
-    message: "Archivo subido.",
-    data: { url: data.publicUrl, path, name: file.name, mime: file.type, size: file.size },
-  };
+  return { ok: true, message: "ok", data: { path: data.path, token: data.token } };
 }

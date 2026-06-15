@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { WorkspaceMembersDialog } from "@/components/dashboard/workspace-members-dialog";
-import { uploadToBucket } from "@/actions/storage";
+import { uploadFileViaSignedUrl } from "@/lib/upload";
 import { createWorkspace, updateWorkspace, type WorkspaceRow } from "@/actions/workspaces";
 
 interface PersonOption { id: string; full_name: string | null; email: string | null }
@@ -174,11 +174,8 @@ function EditWorkspaceDialog({
   async function uploadCover(file: File) {
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      fd.set("prefix", ws.id);
-      const up = await uploadToBucket("workspace-covers", fd);
-      if (up.ok && up.data) { setPortada(up.data.url); toast.success("Portada lista. Guarda para aplicar."); }
+      const up = await uploadFileViaSignedUrl("workspace-covers", ws.id, file);
+      if (up.ok && up.url) { setPortada(up.url); toast.success("Portada lista. Guarda para aplicar."); }
       else toast.error(up.message);
     } finally {
       setUploading(false);
