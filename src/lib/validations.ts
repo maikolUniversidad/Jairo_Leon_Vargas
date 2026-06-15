@@ -247,6 +247,7 @@ export const taskSchema = z.object({
     ])
     .default("pendiente"),
   responsable_id: z.string().uuid().optional().or(z.literal("")),
+  workspace_id: z.string().uuid().optional().or(z.literal("")),
   fecha_limite: z.string().optional().or(z.literal("")),
   contexto_operativo: z
     .enum(["institucional", "campana", "comunitario", "interno", "comunicacional"])

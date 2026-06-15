@@ -139,3 +139,20 @@ export function canAccessModule(
   const allowed = MODULE_ACCESS[module];
   return allowed === "*" || allowed.includes(role);
 }
+
+export const ALL_MODULES = Object.keys(MODULE_ACCESS) as DashboardModule[];
+
+export const MODULE_LABELS: Record<DashboardModule, string> = {
+  panel: "Panel",
+  ciudadanos: "Ciudadanos",
+  solicitudes: "Solicitudes",
+  tareas: "Tareas",
+  calendario: "Calendario",
+  territorio: "Territorio",
+  comunicaciones: "Comunicaciones",
+  documentos: "Documentos",
+  reportes: "Reportes",
+  ia: "Asistente IA",
+  notificaciones: "Notificaciones",
+  configuracion: "Configuración",
+};

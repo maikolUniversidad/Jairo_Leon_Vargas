@@ -34,6 +34,7 @@ export async function createTask(raw: unknown): Promise<ActionResult> {
     prioridad: v.prioridad,
     estado: v.estado,
     responsable_id: v.responsable_id || null,
+    workspace_id: v.workspace_id || null,
     fecha_limite: v.fecha_limite || null,
     creador_id: user.id,
     contexto_operativo: v.contexto_operativo,
@@ -88,6 +89,21 @@ export async function updateTaskStatus(
   if (error) return { ok: false, message: "No se pudo actualizar." };
   revalidatePath("/dashboard/tareas");
   return { ok: true, message: "Estado actualizado." };
+}
+
+/** Asigna (o reasigna) la tarea a un usuario específico. */
+export async function assignTask(
+  id: string,
+  responsableId: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ responsable_id: responsableId })
+    .eq("id", id);
+  if (error) return { ok: false, message: "No se pudo asignar." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Tarea asignada." };
 }
 
 /** Soft delete. */

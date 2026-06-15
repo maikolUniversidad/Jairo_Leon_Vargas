@@ -7,13 +7,12 @@ import { Menu, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { DASHBOARD_NAV } from "./nav";
-import { canAccessModule, type AppRole } from "@/types/roles";
 
-export function Sidebar({ role }: { role: AppRole | null }) {
+export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const items = DASHBOARD_NAV.filter((i) => canAccessModule(role, i.module));
+  const items = DASHBOARD_NAV.filter((i) => viewableModules.includes(i.module));
 
   const nav = (
     <nav className="flex flex-col gap-1 p-3">

@@ -1,8 +1,6 @@
-import { ListChecks } from "lucide-react";
-
-import { PageHeader, EmptyState } from "@/components/dashboard/shared";
-import { TaskCreateDialog } from "@/components/dashboard/task-create-dialog";
-import { TaskBoard } from "@/components/dashboard/task-board";
+import { PageHeader } from "@/components/dashboard/shared";
+import { TareasView } from "@/components/dashboard/tareas-view";
+import { listMyWorkspaces } from "@/actions/workspaces";
 import { createClient } from "@/lib/supabase/server";
 import type { Task, Profile } from "@/types/database";
 
@@ -29,25 +27,18 @@ async function getData(): Promise<{ tasks: Task[]; profiles: Profile[] }> {
 }
 
 export default async function TareasPage() {
-  const { tasks, profiles } = await getData();
+  const [{ tasks, profiles }, workspaces] = await Promise.all([
+    getData(),
+    listMyWorkspaces(),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Tareas y compromisos"
-        description="Canvas Kanban: arrastra las tarjetas entre columnas. Cada tarea guarda checklist, comentarios e historial de estados."
-        action={<TaskCreateDialog />}
+        description="Organiza el trabajo en workspaces con permisos por persona, asigna tareas a usuarios y muévelas en el tablero Kanban."
       />
-
-      {tasks.length === 0 ? (
-        <EmptyState
-          icon={ListChecks}
-          title="Sin tareas todavía"
-          description="Crea la primera tarea con el botón “Nueva tarea”. Aparecerá en el tablero y podrás moverla entre estados."
-        />
-      ) : (
-        <TaskBoard tasks={tasks} profiles={profiles} />
-      )}
+      <TareasView tasks={tasks} profiles={profiles} workspaces={workspaces} />
     </>
   );
 }

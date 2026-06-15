@@ -232,6 +232,7 @@ export interface Task {
   solicitud_id: string | null;
   evento_id: string | null;
   zona_id: string | null;
+  workspace_id: string | null;
   etiquetas: string[] | null;
   orden: number;
   contexto_operativo: ContextoOperativo;

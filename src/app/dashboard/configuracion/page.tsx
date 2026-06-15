@@ -1,26 +1,40 @@
 import { requireRole } from "@/lib/auth";
-import { PageHeader, ModuleScaffold } from "@/components/dashboard/shared";
+import { PageHeader } from "@/components/dashboard/shared";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UsuariosManager } from "@/components/dashboard/usuarios-manager";
+import { RolesManager } from "@/components/dashboard/roles-manager";
+import { listUsers } from "@/actions/usuarios";
+import { listRoles, listPermissions } from "@/actions/roles";
 
 export default async function ConfiguracionPage() {
   // Solo admins (defensa adicional a RLS).
   await requireRole(["super_admin", "administrador"]);
 
+  const [users, roles, permissions] = await Promise.all([
+    listUsers(),
+    listRoles(),
+    listPermissions(),
+  ]);
+
   return (
     <>
       <PageHeader
         title="Configuración"
-        description="Perfil público, usuarios, roles y parámetros del sistema."
+        description="Gestiona usuarios, roles y permisos del sistema."
       />
-      <ModuleScaffold
-        title="Configuración"
-        pending={[
-          "Editor del perfil público (settings.perfil_publico): nombre, lema, foto, redes",
-          "Gestión de usuarios y asignación de roles (user_roles)",
-          "Datos de contacto y políticas legales",
-          "Parámetros de contexto operativo por defecto",
-          "Bitácora de auditoría (audit_logs) con filtros",
-        ]}
-      />
+
+      <Tabs defaultValue="usuarios">
+        <TabsList>
+          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="usuarios">
+          <UsuariosManager users={users} roles={roles} />
+        </TabsContent>
+        <TabsContent value="roles">
+          <RolesManager roles={roles} permissions={permissions} />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

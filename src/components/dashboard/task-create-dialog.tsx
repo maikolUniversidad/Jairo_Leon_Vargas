@@ -28,13 +28,31 @@ import { taskSchema, type TaskInput } from "@/lib/validations";
 import { CONTEXTO_LABELS } from "@/types/database";
 import { createTask } from "@/actions/tareas";
 
-export function TaskCreateDialog() {
+interface PersonOption { id: string; full_name: string | null; email: string | null }
+interface WsOption { id: string; nombre: string }
+
+const UNASSIGNED = "__none__";
+
+export function TaskCreateDialog({
+  profiles = [],
+  workspaces = [],
+  defaultWorkspaceId,
+}: {
+  profiles?: PersonOption[];
+  workspaces?: WsOption[];
+  defaultWorkspaceId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const { register, handleSubmit, setValue, reset, watch, formState } =
     useForm<TaskInput>({
       resolver: zodResolver(taskSchema),
-      defaultValues: { prioridad: "media", estado: "pendiente", contexto_operativo: "interno" },
+      defaultValues: {
+        prioridad: "media",
+        estado: "pendiente",
+        contexto_operativo: "interno",
+        workspace_id: defaultWorkspaceId ?? "",
+      },
     });
 
   const contexto = watch("contexto_operativo");
@@ -74,6 +92,41 @@ export function TaskCreateDialog() {
             <Label htmlFor="t-desc">Descripción</Label>
             <Textarea id="t-desc" rows={3} {...register("descripcion")} />
           </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Asignar a</Label>
+              <Select
+                onValueChange={(v) => setValue("responsable_id", v === UNASSIGNED ? "" : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name || p.email || p.id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Workspace</Label>
+              <Select
+                defaultValue={defaultWorkspaceId ?? UNASSIGNED}
+                onValueChange={(v) => setValue("workspace_id", v === UNASSIGNED ? "" : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="General" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>General (sin workspace)</SelectItem>
+                  {workspaces.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>{w.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Prioridad</Label>
@@ -92,6 +145,7 @@ export function TaskCreateDialog() {
               <Input id="t-fecha" type="date" {...register("fecha_limite")} />
             </div>
           </div>
+
           <div>
             <Label>Contexto operativo</Label>
             <Select
