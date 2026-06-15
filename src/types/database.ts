@@ -277,6 +277,33 @@ export interface Zone {
   deleted_at: string | null;
 }
 
+export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
+  borrador: "Borrador",
+  aprobado: "Aprobado",
+  archivado: "Archivado",
+  reservado: "Reservado",
+  eliminado: "Eliminado",
+};
+
+export const CONFIDENCIALIDAD_LABELS: Record<Confidentiality, string> = {
+  publico: "Público",
+  interno: "Interno",
+  reservado: "Reservado",
+};
+
+export interface DocumentFolder {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  parent_id: string | null;
+  /** Roles que pueden ver la carpeta. Vacío = visible a todo el staff. */
+  allowed_roles: AppRole[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
 export interface DocumentRecord {
   id: string;
   titulo: string;
@@ -287,6 +314,12 @@ export interface DocumentRecord {
   confidencialidad: Confidentiality;
   tags: string[] | null;
   contexto_operativo: ContextoOperativo;
+  folder_id: string | null;
+  descripcion: string | null;
+  storage_path: string | null;
+  original_name: string | null;
+  mime: string | null;
+  size: number | null;
   creado_por: string | null;
   aprobado_por: string | null;
   created_at: string;

@@ -288,3 +288,51 @@ export const checklistItemSchema = z.object({
   task_id: z.string().uuid(),
   texto: z.string().trim().min(1, "Escribe el ítem").max(300),
 });
+
+/* ──────────────── Documentos ──────────────── */
+
+const APP_ROLES = [
+  "super_admin",
+  "administrador",
+  "direccion_general",
+  "coordinador_utl",
+  "juridico_legislativo",
+  "comunicaciones",
+  "coordinador_territorial",
+  "gestor_territorial",
+  "atencion_ciudadana",
+  "analitica_reportes",
+  "voluntario",
+  "consulta",
+] as const;
+
+export const documentFolderSchema = z.object({
+  nombre: z.string().trim().min(2, "Nombre de la carpeta requerido").max(160),
+  descripcion: z.string().trim().max(2000).optional().or(z.literal("")),
+  parent_id: z.string().uuid().optional().or(z.literal("")),
+  // Vacío = visible a todo el staff.
+  allowed_roles: z.array(z.enum(APP_ROLES)).optional().default([]),
+});
+export type DocumentFolderInput = z.infer<typeof documentFolderSchema>;
+
+export const documentSchema = z.object({
+  titulo: z.string().trim().min(2, "Título requerido").max(200),
+  descripcion: z.string().trim().max(4000).optional().or(z.literal("")),
+  tipo_documento: z.string().trim().max(80).optional().or(z.literal("")),
+  folder_id: z.string().uuid().optional().or(z.literal("")),
+  confidencialidad: z.enum(["publico", "interno", "reservado"]).default("interno"),
+  estado: z
+    .enum(["borrador", "aprobado", "archivado", "reservado", "eliminado"])
+    .default("borrador"),
+  contexto_operativo: z
+    .enum(["institucional", "campana", "comunitario", "interno", "comunicacional"])
+    .default("institucional"),
+  tags: z.array(z.string().trim().max(40)).optional().default([]),
+  // Archivo ya subido al bucket privado (o enlace externo).
+  archivo_url: z.string().trim().optional().or(z.literal("")),
+  storage_path: z.string().trim().optional().or(z.literal("")),
+  original_name: z.string().trim().max(255).optional().or(z.literal("")),
+  mime: z.string().trim().max(160).optional().or(z.literal("")),
+  size: z.number().int().nonnegative().optional(),
+});
+export type DocumentInput = z.infer<typeof documentSchema>;

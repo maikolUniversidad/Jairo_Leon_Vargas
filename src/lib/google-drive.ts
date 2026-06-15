@@ -142,6 +142,61 @@ export async function ensureFolderTree(
   return cfg;
 }
 
+/** Crea una carpeta (siempre nueva) bajo un padre. */
+async function createFolder(drive: drive_v3.Drive, name: string, parentId: string): Promise<string> {
+  const created = await drive.files.create({
+    requestBody: { name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] },
+    fields: "id",
+  });
+  return created.data.id!;
+}
+
+export interface CoberturaFolders {
+  root: string;
+  crudo: string;
+  editado: string;
+  aprobado: string;
+  link: string;
+}
+
+/** Crea la carpeta de una cobertura dentro de "04 Comunicaciones" + 3 subcarpetas. */
+export async function createCoberturaFolders(nombre: string): Promise<CoberturaFolders | null> {
+  const drive = await getDrive();
+  if (!drive) return null;
+  const cfg = await getDriveConfig();
+  const parent = cfg.folders?.comunicaciones ?? cfg.root_folder_id;
+  if (!parent) return null;
+
+  const root = await createFolder(drive, nombre, parent);
+  const crudo = await createFolder(drive, "Contenido Crudo", root);
+  const editado = await createFolder(drive, "Contenido Editado", root);
+  const aprobado = await createFolder(drive, "Contenido Aprobado", root);
+  return { root, crudo, editado, aprobado, link: `https://drive.google.com/drive/folders/${root}` };
+}
+
+/** Sube un buffer a una carpeta concreta de Drive (por id). */
+export async function uploadBufferToFolder(opts: {
+  folderId: string;
+  name: string;
+  mime: string;
+  buffer: Buffer;
+}): Promise<{ id: string; link: string } | null> {
+  const drive = await getDrive();
+  if (!drive) return null;
+  const created = await drive.files.create({
+    requestBody: { name: opts.name, parents: [opts.folderId] },
+    media: { mimeType: opts.mime || "application/octet-stream", body: Readable.from(opts.buffer) },
+    fields: "id, webViewLink",
+  });
+  const id = created.data.id!;
+  try {
+    await drive.permissions.create({ fileId: id, requestBody: { role: "reader", type: "anyone" } });
+  } catch {
+    /* ignore */
+  }
+  return { id, link: created.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view` };
+}
+
 /** Sube un buffer a una subcarpeta del proyecto y devuelve el enlace de Drive. */
 export async function uploadBufferToDrive(opts: {
   folderKey: string;
