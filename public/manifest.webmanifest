@@ -1,0 +1,16 @@
+{
+  "name": "UTL 360 – Jairo León Vargas",
+  "short_name": "UTL 360",
+  "description": "Plataforma de gestión territorial, ciudadana y de coordinación del equipo.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0e7490",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

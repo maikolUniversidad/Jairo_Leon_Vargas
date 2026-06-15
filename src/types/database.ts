@@ -112,6 +112,40 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface UserLocation {
+  user_id: string;
+  lat: number | null;
+  lng: number | null;
+  accuracy: number | null;
+  heading: number | null;
+  speed: number | null;
+  is_sharing: boolean;
+  updated_at: string;
+}
+
+export type DirectiveStatus = "pendiente" | "en_camino" | "llego" | "cancelada";
+
+export const DIRECTIVE_STATUS_LABELS: Record<DirectiveStatus, string> = {
+  pendiente: "Pendiente",
+  en_camino: "En camino",
+  llego: "Llegó",
+  cancelada: "Cancelada",
+};
+
+export interface LocationDirective {
+  id: string;
+  user_id: string;
+  created_by: string | null;
+  titulo: string;
+  descripcion: string | null;
+  destino_nombre: string | null;
+  destino_lat: number | null;
+  destino_lng: number | null;
+  estado: DirectiveStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Citizen {
   id: string;
   nombre: string;

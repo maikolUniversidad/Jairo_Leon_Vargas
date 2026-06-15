@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
   Bell,
+  Radar,
   UserCircle,
   Settings,
   type LucideIcon,
@@ -40,6 +41,7 @@ export const DASHBOARD_NAV: NavItem[] = [
   { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck, module: "auditoria" },
   { href: "/dashboard/ia", label: "Asistente IA", icon: Sparkles, module: "ia" },
   { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, module: "notificaciones" },
+  { href: "/dashboard/ubicaciones", label: "Ubicaciones", icon: Radar, module: "ubicaciones" },
   { href: "/dashboard/perfil", label: "Mi perfil", icon: UserCircle, module: "perfil" },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings, module: "configuracion" },
 ];

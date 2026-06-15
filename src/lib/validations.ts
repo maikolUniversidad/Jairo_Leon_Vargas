@@ -201,6 +201,46 @@ export const eventCreateSchema = z.object({
 });
 export type EventCreateInput = z.infer<typeof eventCreateSchema>;
 
+/* ──────────────── Comunicaciones: publicaciones + calendario editorial ──────────────── */
+
+export const CONTENT_TIPOS = [
+  "noticia", "comunicado", "articulo", "video", "pieza", "boletin", "guion", "reel",
+] as const;
+
+export const CONTENT_ESTADOS = [
+  "idea", "borrador", "en_revision", "aprobado", "programado", "publicado", "archivado",
+] as const;
+
+export const CONTENT_CANALES = [
+  "Facebook", "Instagram", "X (Twitter)", "TikTok", "YouTube", "WhatsApp", "Sitio web", "Boletín", "Prensa",
+] as const;
+
+export const postSchema = z.object({
+  titulo: z.string().trim().min(3, "Título requerido").max(200),
+  tipo: z.enum(CONTENT_TIPOS).default("noticia"),
+  categoria: optText(80),
+  resumen: optText(500),
+  cuerpo: z.string().trim().max(20000).optional().or(z.literal("")),
+  imagen_url: optText(600),
+  visibilidad: z.enum(["publica", "interna"]).default("interna"),
+  estado: z.enum(CONTENT_ESTADOS).default("borrador"),
+  contexto_operativo: z
+    .enum(["institucional", "campana", "comunitario", "interno", "comunicacional"])
+    .default("comunicacional"),
+  fecha_publicacion: z.string().optional().or(z.literal("")),
+});
+export type PostInput = z.infer<typeof postSchema>;
+
+export const calendarSchema = z.object({
+  titulo: z.string().trim().min(3, "Título requerido").max(200),
+  canal: z.string().trim().min(1, "Indica el canal").max(60),
+  fecha_programada: z.string().min(1, "Indica la fecha"),
+  estado: z.enum(CONTENT_ESTADOS).default("programado"),
+  post_id: z.string().uuid().optional().or(z.literal("")),
+  responsable_id: z.string().uuid().optional().or(z.literal("")),
+});
+export type CalendarInput = z.infer<typeof calendarSchema>;
+
 export const eventSignupSchema = z.object({
   event_id: z.string().uuid("Evento inválido"),
   nombre: z.string().trim().min(2, "Ingresa tu nombre").max(120),
@@ -303,6 +343,18 @@ export const profileSchema = z.object({
   avatar_url: z.string().trim().optional().or(z.literal("")),
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
+
+/* ──────────────── Ubicaciones / indicaciones ──────────────── */
+
+export const directiveSchema = z.object({
+  user_id: z.string().uuid("Selecciona a una persona"),
+  titulo: z.string().trim().min(2, "Escribe una indicación").max(160),
+  descripcion: z.string().trim().max(2000).optional().or(z.literal("")),
+  destino_nombre: z.string().trim().max(200).optional().or(z.literal("")),
+  destino_lat: z.number().min(-90).max(90).optional(),
+  destino_lng: z.number().min(-180).max(180).optional(),
+});
+export type DirectiveInput = z.infer<typeof directiveSchema>;
 
 /* ──────────────── Documentos ──────────────── */
 

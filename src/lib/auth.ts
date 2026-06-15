@@ -53,8 +53,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       .eq("can_view", true);
     viewableModules = Array.from(new Set((perms ?? []).map((p) => p.module as string)));
   }
-  // "Mi perfil" siempre disponible para cualquier usuario autenticado.
+  // "Mi perfil" y "Ubicaciones" siempre disponibles para cualquier usuario
+  // autenticado (cada quien controla su ubicación y ve las indicaciones suyas).
   if (!viewableModules.includes("perfil")) viewableModules.push("perfil");
+  if (!viewableModules.includes("ubicaciones")) viewableModules.push("ubicaciones");
 
   return {
     id: user.id,

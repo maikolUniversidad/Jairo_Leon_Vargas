@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
+import { LocationTracker } from "@/components/dashboard/location-tracker";
 
 export default async function DashboardLayout({
   children,
@@ -22,6 +23,7 @@ export default async function DashboardLayout({
         />
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>
+      <LocationTracker />
     </div>
   );
 }

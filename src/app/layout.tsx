@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { PWARegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const inter = Inter({
@@ -29,6 +30,12 @@ export const metadata: Metadata = {
       "Gestión social, participación ciudadana y trabajo comunitario para Bogotá y Colombia.",
   },
   robots: { index: true, follow: true },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "UTL 360", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0e7490",
 };
 
 export default function RootLayout({
@@ -39,6 +46,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans`}>
         {children}
         <Toaster />
+        <PWARegister />
       </body>
     </html>
   );
