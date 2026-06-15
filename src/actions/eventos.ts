@@ -45,6 +45,41 @@ export async function createEvent(raw: unknown): Promise<ActionResult> {
   return { ok: true, message: "Evento creado." };
 }
 
+/**
+ * Publica o vuelve interno un evento.
+ * Publicar = visible en la agenda web (visibilidad pública + estado confirmado).
+ */
+export async function setEventPublish(
+  id: string,
+  publicar: boolean,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const patch = publicar
+    ? { visibilidad: "publica", estado: "confirmado" }
+    : { visibilidad: "interna" };
+  const { error } = await supabase.from("events").update(patch).eq("id", id);
+  if (error) return { ok: false, message: "No se pudo actualizar (¿permisos?)." };
+  revalidatePath("/dashboard/calendario");
+  revalidatePath("/agenda");
+  return {
+    ok: true,
+    message: publicar ? "Evento publicado en la agenda web." : "Evento marcado como interno.",
+  };
+}
+
+/** Soft delete de un evento. */
+export async function softDeleteEvent(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, message: "No se pudo eliminar." };
+  revalidatePath("/dashboard/calendario");
+  revalidatePath("/agenda");
+  return { ok: true, message: "Evento eliminado." };
+}
+
 /** Inscripción pública a un evento (RLS: event_attendees_public_insert). */
 export async function registerAttendee(
   raw: unknown,

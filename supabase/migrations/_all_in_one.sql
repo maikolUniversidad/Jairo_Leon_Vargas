@@ -1,4 +1,4 @@
--- UTL 360 · Migración completa (0001..0010).
+-- UTL 360 · Migración completa (0001..0011).
 
 -- ===== 0001_schema.sql =====
 -- ============================================================================
@@ -1680,3 +1680,16 @@ from (values
   ('Radio Comunitaria Suba','','Director','Emisora local','medio','3104445566','Suba','Suba','alta')
 ) as x(nombre, apellido, puesto, org, tipo, tel, loc, zona, inf)
 on conflict do nothing;
+
+-- ===== 0011_calendar_sync.sql =====
+-- ============================================================================
+-- UTL 360 · 0011_calendar_sync.sql
+-- Token por usuario para suscribir su calendario (ICS) en Google/iPhone.
+-- Ejecuta DESPUÉS de 0010.
+-- ============================================================================
+
+alter table public.profiles add column if not exists calendar_token text;
+
+-- Único cuando no es nulo
+create unique index if not exists idx_profiles_calendar_token
+  on public.profiles(calendar_token) where calendar_token is not null;
