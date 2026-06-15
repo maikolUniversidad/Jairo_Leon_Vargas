@@ -57,6 +57,7 @@ import {
   removeTaskAssignee,
   addTaskAttachment,
   removeTaskAttachment,
+  updateTaskAttachment,
   getTaskDetail,
 } from "@/actions/tareas";
 
@@ -72,7 +73,21 @@ interface Attachment {
   url: string;
   storage_path: string | null;
   mime: string | null;
+  etiqueta: string | null;
+  estado: string;
+  es_requisito: boolean;
 }
+
+export const ATTACH_ETIQUETAS = [
+  "Soporte", "Evidencia", "Contrato", "Informe", "Acta", "Cotización", "Foto", "Otro",
+];
+export const ATTACH_ESTADOS: { value: string; label: string; tone: "muted" | "warning" | "secondary" | "success" | "danger" }[] = [
+  { value: "pendiente", label: "Pendiente", tone: "warning" },
+  { value: "entregado", label: "Entregado", tone: "secondary" },
+  { value: "en_revision", label: "En revisión", tone: "muted" },
+  { value: "aprobado", label: "Aprobado", tone: "success" },
+  { value: "rechazado", label: "Rechazado", tone: "danger" },
+];
 
 const COLUMNS: TaskStatus[] = [
   "pendiente", "en_proceso", "bloqueada", "en_revision", "aprobada", "finalizada", "cancelada",
@@ -236,6 +251,10 @@ function TaskDetailDialog({
   const [linkName, setLinkName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  // Metadatos aplicados a las próximas subidas/enlaces
+  const [newEtiqueta, setNewEtiqueta] = useState("");
+  const [newEstado, setNewEstado] = useState("entregado");
+  const [newRequisito, setNewRequisito] = useState(false);
 
   const load = () => {
     getTaskDetail(task.id).then((d) => {
@@ -247,16 +266,20 @@ function TaskDetailDialog({
     });
   };
 
-  async function uploadFile(file: File) {
+  async function uploadFiles(files: FileList) {
     setUploading(true);
     try {
-      const up = await uploadFileViaSignedUrl("task-files", task.id, file);
-      if (!up.ok || !up.url) { toast.error(up.message); return; }
-      const res = await addTaskAttachment({
-        task_id: task.id, tipo: "archivo", nombre: up.name!,
-        url: up.url, storage_path: up.path, mime: up.mime, size: up.size,
-      });
-      if (res.ok) load(); else toast.error(res.message);
+      for (const file of Array.from(files)) {
+        const up = await uploadFileViaSignedUrl("task-files", task.id, file);
+        if (!up.ok || !up.url) { toast.error(`${file.name}: ${up.message}`); continue; }
+        const res = await addTaskAttachment({
+          task_id: task.id, tipo: "archivo", nombre: up.name!,
+          url: up.url, storage_path: up.path, mime: up.mime, size: up.size,
+          etiqueta: newEtiqueta, estado: newEstado, es_requisito: newRequisito,
+        });
+        if (!res.ok) toast.error(res.message);
+      }
+      load();
     } finally {
       setUploading(false);
     }
@@ -343,7 +366,7 @@ function TaskDetailDialog({
           </Button>
         </div>
 
-        {/* Archivos y enlaces (acumulativo) */}
+        {/* Archivos y enlaces (acumulativo, con etiqueta / estado / requisito) */}
         <h4 className="mt-2 flex items-center gap-2 text-sm font-semibold">
           <Paperclip className="size-4" /> Archivos y enlaces {attachments.length > 0 && `(${attachments.length})`}
         </h4>
@@ -351,39 +374,92 @@ function TaskDetailDialog({
           {attachments.length === 0 && (
             <li className="text-sm text-muted-foreground">Sin adjuntos. Sube archivos o pega enlaces.</li>
           )}
-          {attachments.map((at) => (
-            <li key={at.id} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
-              {at.tipo === "link" ? <Link2 className="size-4 shrink-0 text-primary" /> : <FileText className="size-4 shrink-0 text-primary" />}
-              <a href={at.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">
-                {at.nombre}
-              </a>
-              <button
-                type="button" aria-label="Eliminar"
-                className="text-muted-foreground hover:text-destructive"
-                onClick={() =>
-                  start(async () => {
-                    const res = await removeTaskAttachment(at.id, at.storage_path);
-                    if (res.ok) load(); else toast.error(res.message);
-                  })
-                }
-              >
-                <X className="size-4" />
-              </button>
-            </li>
-          ))}
+          {attachments.map((at) => {
+            const est = ATTACH_ESTADOS.find((e) => e.value === at.estado);
+            const setMeta = (patch: { etiqueta?: string; estado?: string; es_requisito?: boolean }) =>
+              start(async () => {
+                setAttachments((prev) => prev.map((x) => (x.id === at.id ? { ...x, ...patch } : x)));
+                const res = await updateTaskAttachment(at.id, patch);
+                if (!res.ok) { toast.error(res.message); load(); }
+              });
+            return (
+              <li key={at.id} className="rounded-lg border p-2 text-sm">
+                <div className="flex items-center gap-2">
+                  {at.tipo === "link" ? <Link2 className="size-4 shrink-0 text-primary" /> : <FileText className="size-4 shrink-0 text-primary" />}
+                  <a href={at.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">
+                    {at.nombre}
+                  </a>
+                  {at.es_requisito && <Badge variant="warning">Requisito</Badge>}
+                  {est && <Badge variant={est.tone}>{est.label}</Badge>}
+                  <button
+                    type="button" aria-label="Eliminar"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => start(async () => {
+                      const res = await removeTaskAttachment(at.id, at.storage_path);
+                      if (res.ok) load(); else toast.error(res.message);
+                    })}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
+                  <Select value={at.etiqueta ?? ""} onValueChange={(v) => setMeta({ etiqueta: v })}>
+                    <SelectTrigger className="h-7 w-36 text-xs"><SelectValue placeholder="Etiqueta" /></SelectTrigger>
+                    <SelectContent>
+                      {ATTACH_ETIQUETAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={at.estado} onValueChange={(v) => setMeta({ estado: v })}>
+                    <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ATTACH_ESTADOS.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <label className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground">
+                    <input type="checkbox" className="size-3.5" checked={at.es_requisito} onChange={(e) => setMeta({ es_requisito: e.target.checked })} />
+                    Requisito
+                  </label>
+                </div>
+              </li>
+            );
+          })}
         </ul>
+
+        {/* Metadatos para las próximas subidas/enlaces */}
+        <div className="rounded-lg bg-muted/40 p-2">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Se aplican a lo que agregues:</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={newEtiqueta} onValueChange={setNewEtiqueta}>
+              <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Etiqueta" /></SelectTrigger>
+              <SelectContent>
+                {ATTACH_ETIQUETAS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={newEstado} onValueChange={setNewEstado}>
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ATTACH_ESTADOS.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <label className="flex cursor-pointer items-center gap-1 text-xs">
+              <input type="checkbox" className="size-3.5" checked={newRequisito} onChange={(e) => setNewRequisito(e.target.checked)} />
+              Es requisito
+            </label>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-2">
-          {/* Subir archivo */}
+          {/* Subir uno o varios archivos */}
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50">
             <Upload className="size-4" />
-            {uploading ? "Subiendo…" : "Subir archivo"}
+            {uploading ? "Subiendo…" : "Subir archivo(s)"}
             <input
               type="file"
+              multiple
               className="hidden"
               disabled={uploading}
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadFile(f);
+                if (e.target.files?.length) uploadFiles(e.target.files);
                 e.target.value = "";
               }}
             />
@@ -391,7 +467,7 @@ function TaskDetailDialog({
           {/* Agregar enlace */}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input placeholder="Nombre del enlace" value={linkName} onChange={(e) => setLinkName(e.target.value)} className="sm:w-40" />
-            <Input placeholder="https://…" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="flex-1" />
+            <Input placeholder="https://… (incluye Drive)" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="flex-1" />
             <Button
               type="button" variant="outline"
               onClick={() => {
@@ -400,6 +476,7 @@ function TaskDetailDialog({
                   const res = await addTaskAttachment({
                     task_id: task.id, tipo: "link",
                     nombre: linkName.trim() || linkUrl.trim(), url: linkUrl.trim(),
+                    etiqueta: newEtiqueta, estado: newEstado, es_requisito: newRequisito,
                   });
                   if (res.ok) { setLinkName(""); setLinkUrl(""); load(); } else toast.error(res.message);
                 });

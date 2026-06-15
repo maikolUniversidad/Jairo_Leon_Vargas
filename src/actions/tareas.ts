@@ -138,6 +138,10 @@ export async function addTaskAttachment(input: {
   storage_path?: string;
   mime?: string;
   size?: number;
+  etiqueta?: string;
+  estado?: string;
+  es_requisito?: boolean;
+  descripcion?: string;
 }): Promise<ActionResult> {
   if (!input.url?.trim() || !input.nombre?.trim())
     return { ok: false, message: "Faltan datos del adjunto." };
@@ -153,11 +157,31 @@ export async function addTaskAttachment(input: {
     storage_path: input.storage_path ?? null,
     mime: input.mime ?? null,
     size: input.size ?? null,
+    etiqueta: input.etiqueta || null,
+    estado: input.estado || "entregado",
+    es_requisito: input.es_requisito ?? false,
+    descripcion: input.descripcion || null,
     created_by: user?.id ?? null,
   });
   if (error) return { ok: false, message: "No se pudo guardar el adjunto (¿permisos?)." };
   revalidatePath("/dashboard/tareas");
   return { ok: true, message: "Adjunto agregado." };
+}
+
+/** Actualiza metadatos de un adjunto (etiqueta, estado, requisito). */
+export async function updateTaskAttachment(
+  id: string,
+  patch: { etiqueta?: string; estado?: string; es_requisito?: boolean },
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const clean: Record<string, unknown> = {};
+  if (patch.etiqueta !== undefined) clean.etiqueta = patch.etiqueta || null;
+  if (patch.estado !== undefined) clean.estado = patch.estado;
+  if (patch.es_requisito !== undefined) clean.es_requisito = patch.es_requisito;
+  const { error } = await supabase.from("task_attachments").update(clean).eq("id", id);
+  if (error) return { ok: false, message: "No se pudo actualizar." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Adjunto actualizado." };
 }
 
 /** Elimina un adjunto (y el objeto en Storage si aplica). */
