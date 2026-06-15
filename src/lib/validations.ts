@@ -248,6 +248,7 @@ export const taskSchema = z.object({
     .default("pendiente"),
   responsable_id: z.string().uuid().optional().or(z.literal("")),
   workspace_id: z.string().uuid().optional().or(z.literal("")),
+  contact_id: z.string().uuid().optional().or(z.literal("")),
   responsables: z.array(z.string().uuid()).optional().default([]),
   participantes: z.array(z.string().uuid()).optional().default([]),
   fecha_limite: z.string().optional().or(z.literal("")),
@@ -256,6 +257,27 @@ export const taskSchema = z.object({
     .default("interno"),
 });
 export type TaskInput = z.infer<typeof taskSchema>;
+
+export const contactSchema = z.object({
+  nombre: z.string().trim().min(2, "Nombre requerido").max(160),
+  apellido: z.string().trim().max(160).optional().or(z.literal("")),
+  puesto: z.string().trim().max(160).optional().or(z.literal("")),
+  organizacion: z.string().trim().max(160).optional().or(z.literal("")),
+  tipo: z
+    .enum(["lider", "funcionario", "aliado", "medio", "comunidad", "institucion", "otro"])
+    .default("aliado"),
+  telefono: z.string().trim().max(40).optional().or(z.literal("")),
+  whatsapp: z.string().trim().max(40).optional().or(z.literal("")),
+  email: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
+  direccion: z.string().trim().max(200).optional().or(z.literal("")),
+  localidad: z.string().trim().max(120).optional().or(z.literal("")),
+  barrio: z.string().trim().max(120).optional().or(z.literal("")),
+  zona_id: z.string().uuid().optional().or(z.literal("")),
+  influencia: z.enum(["alta", "media", "baja"]).optional().or(z.literal("")),
+  notas: z.string().trim().max(4000).optional().or(z.literal("")),
+  foto_url: z.string().trim().optional().or(z.literal("")),
+});
+export type ContactInput = z.infer<typeof contactSchema>;
 
 export const taskCommentSchema = z.object({
   task_id: z.string().uuid(),

@@ -127,6 +127,7 @@ export interface Citizen {
   estado: string;
   contexto_operativo: ContextoOperativo;
   observaciones: string | null;
+  referido_por_contact_id: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -291,6 +292,72 @@ export interface DocumentRecord {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+}
+
+export interface Contact {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  foto_url: string | null;
+  puesto: string | null;
+  organizacion: string | null;
+  tipo: string;
+  telefono: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  direccion: string | null;
+  localidad: string | null;
+  barrio: string | null;
+  zona_id: string | null;
+  influencia: string | null;
+  notas: string | null;
+  etiquetas: string[] | null;
+  estado: string;
+  contexto_operativo: ContextoOperativo;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export const CONTACT_TIPOS = [
+  "lider",
+  "funcionario",
+  "aliado",
+  "medio",
+  "comunidad",
+  "institucion",
+  "otro",
+] as const;
+
+export const CONTACT_TIPO_LABELS: Record<string, string> = {
+  lider: "Líder",
+  funcionario: "Funcionario",
+  aliado: "Aliado",
+  medio: "Medio",
+  comunidad: "Comunidad",
+  institucion: "Institución",
+  otro: "Otro",
+};
+
+export interface ContactRelation {
+  id: string;
+  contact_id: string;
+  related_contact_id: string;
+  tipo_relacion: string;
+  nota: string | null;
+  created_at: string;
+}
+
+export interface ContactDocument {
+  id: string;
+  contact_id: string;
+  tipo: "archivo" | "link";
+  nombre: string;
+  url: string;
+  storage_path: string | null;
+  mime: string | null;
+  size: number | null;
+  created_at: string;
 }
 
 export interface ContentPost {

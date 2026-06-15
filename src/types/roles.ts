@@ -46,6 +46,7 @@ export const ADMIN_ROLES: AppRole[] = ["super_admin", "administrador"];
 export type DashboardModule =
   | "panel"
   | "ciudadanos"
+  | "contactos"
   | "solicitudes"
   | "tareas"
   | "calendario"
@@ -60,6 +61,16 @@ export type DashboardModule =
 export const MODULE_ACCESS: Record<DashboardModule, AppRole[] | "*"> = {
   panel: "*",
   ciudadanos: [
+    "super_admin",
+    "administrador",
+    "direccion_general",
+    "coordinador_utl",
+    "atencion_ciudadana",
+    "coordinador_territorial",
+    "gestor_territorial",
+    "analitica_reportes",
+  ],
+  contactos: [
     "super_admin",
     "administrador",
     "direccion_general",
@@ -145,6 +156,7 @@ export const ALL_MODULES = Object.keys(MODULE_ACCESS) as DashboardModule[];
 export const MODULE_LABELS: Record<DashboardModule, string> = {
   panel: "Panel",
   ciudadanos: "Ciudadanos",
+  contactos: "Contactos",
   solicitudes: "Solicitudes",
   tareas: "Tareas",
   calendario: "Calendario",

@@ -40,6 +40,7 @@ export async function createTask(raw: unknown): Promise<ActionResult> {
       estado: v.estado,
       responsable_id: responsables[0] || v.responsable_id || null,
       workspace_id: v.workspace_id || null,
+      contact_id: v.contact_id || null,
       fecha_limite: v.fecha_limite || null,
       creador_id: user.id,
       contexto_operativo: v.contexto_operativo,

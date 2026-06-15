@@ -1,45 +1,48 @@
 import { Users } from "lucide-react";
 
 import { PageHeader, EmptyState } from "@/components/dashboard/shared";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CiudadanosList } from "@/components/dashboard/ciudadanos-list";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/utils";
 import type { Citizen } from "@/types/database";
 
-async function getCitizens(): Promise<Citizen[]> {
+async function getData(): Promise<{ citizens: Citizen[]; referrerById: Record<string, string> }> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
+    const { data: citizens } = await supabase
       .from("citizens")
       .select("*")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(100);
-    return (data as Citizen[]) ?? [];
+      .limit(500);
+
+    const list = (citizens as Citizen[]) ?? [];
+    const refIds = Array.from(
+      new Set(list.map((c) => c.referido_por_contact_id).filter((x): x is string => Boolean(x))),
+    );
+    const referrerById: Record<string, string> = {};
+    if (refIds.length > 0) {
+      const { data: contacts } = await supabase
+        .from("contacts")
+        .select("id, nombre, apellido")
+        .in("id", refIds);
+      for (const c of contacts ?? [])
+        referrerById[c.id] = `${c.nombre} ${c.apellido ?? ""}`.trim();
+    }
+    return { citizens: list, referrerById };
   } catch {
-    return [];
+    return { citizens: [], referrerById: {} };
   }
 }
 
 export default async function CiudadanosPage() {
-  const citizens = await getCitizens();
+  const { citizens, referrerById } = await getData();
 
   return (
     <>
       <PageHeader
         title="CRM ciudadano"
-        description="Personas registradas desde la landing y por el equipo."
+        description="Personas registradas desde la landing y por el equipo. Cambia entre tabla y vCard."
       />
-
       {citizens.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -47,43 +50,7 @@ export default async function CiudadanosPage() {
           description="Cuando alguien se registre desde la landing o el equipo cargue contactos, aparecerán aquí."
         />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Localidad</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Registrado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {citizens.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">
-                      {c.nombre} {c.apellido ?? ""}
-                    </TableCell>
-                    <TableCell>
-                      {c.localidad ?? "—"}
-                      {c.barrio ? <span className="text-muted-foreground"> · {c.barrio}</span> : null}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {c.whatsapp || c.telefono || c.email || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="muted">{c.estado}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(c.created_at)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <CiudadanosList citizens={citizens} referrerById={referrerById} />
       )}
     </>
   );
