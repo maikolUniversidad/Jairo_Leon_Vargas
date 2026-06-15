@@ -1,8 +1,6 @@
--- UTL 360 · Migración completa (0001..0007). Pega TODO en Supabase SQL Editor y ejecuta.
+-- UTL 360 · Migración completa (0001..0008).
 
--- ============================================================
--- 0001_schema.sql
--- ============================================================
+-- ===== 0001_schema.sql =====
 -- ============================================================================
 -- UTL 360 · 0001_schema.sql
 -- Esquema base: extensiones, enums, tablas, índices y triggers updated_at.
@@ -452,9 +450,7 @@ begin
   end loop;
 end $$;
 
--- ============================================================
--- 0002_functions.sql
--- ============================================================
+-- ===== 0002_functions.sql =====
 -- ============================================================================
 -- UTL 360 · 0002_functions.sql
 -- Funciones helper de autorización, radicado, auditoría y alta de usuarios.
@@ -610,9 +606,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ============================================================
--- 0003_rls.sql
--- ============================================================
+-- ===== 0003_rls.sql =====
 -- ============================================================================
 -- UTL 360 · 0003_rls.sql
 -- Row Level Security: habilitación + políticas por rol.
@@ -893,9 +887,7 @@ create policy audit_read on public.audit_logs for select to authenticated
   );
 -- Sin política de INSERT para clientes: los inserta el trigger (SECURITY DEFINER).
 
--- ============================================================
--- 0004_seed.sql
--- ============================================================
+-- ===== 0004_seed.sql =====
 -- ============================================================================
 -- UTL 360 · 0004_seed.sql
 -- Datos iniciales: catálogo de roles, áreas, settings y placeholders de contenido.
@@ -965,9 +957,7 @@ values
    'borrador','interna','campana', null)
 on conflict (slug) do nothing;
 
--- ============================================================
--- 0005_notifications.sql
--- ============================================================
+-- ===== 0005_notifications.sql =====
 -- ============================================================================
 -- UTL 360 · 0005_notifications.sql
 -- Sistema de notificaciones multiplataforma y auditable.
@@ -1050,9 +1040,7 @@ create trigger trg_notif_batches_audit
   after insert or update or delete on public.notification_batches
   for each row execute function public.log_audit_event();
 
--- ============================================================
--- 0006_solicitudes_gestion.sql
--- ============================================================
+-- ===== 0006_solicitudes_gestion.sql =====
 -- ============================================================================
 -- UTL 360 · 0006_solicitudes_gestion.sql
 -- Gestión integral de solicitudes (modelo BASE SOLICITUDES) + historial
@@ -1187,9 +1175,7 @@ drop policy if exists task_history_staff on public.task_history;
 create policy task_history_staff on public.task_history for all to authenticated
   using (public.is_staff()) with check (public.is_staff());
 
--- ============================================================
--- 0007_workspaces_permisos.sql
--- ============================================================
+-- ===== 0007_workspaces_permisos.sql =====
 -- ============================================================================
 -- UTL 360 · 0007_workspaces_permisos.sql
 -- 1) Workspaces de tareas con permisos por persona + asignación a usuarios.
@@ -1419,3 +1405,59 @@ where can_view = true
 -- can_delete solo para administradores
 update public.role_permissions set can_delete = true
 where role_key in ('super_admin','administrador');
+
+-- ===== 0008_task_assignees.sql =====
+-- ============================================================================
+-- UTL 360 · 0008_task_assignees.sql
+-- Responsables y participantes (varios) por tarea + helper de edición.
+-- Ejecuta DESPUÉS de 0007. Idempotente.
+-- ============================================================================
+
+create table if not exists public.task_assignees (
+  id         uuid primary key default gen_random_uuid(),
+  task_id    uuid not null references public.tasks(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  rol        text not null default 'participante' check (rol in ('responsable','participante')),
+  created_at timestamptz not null default now(),
+  unique (task_id, user_id)
+);
+create index if not exists idx_task_assignees_task on public.task_assignees(task_id);
+create index if not exists idx_task_assignees_user on public.task_assignees(user_id);
+
+-- ¿Puede el usuario editar/gestionar esta tarea?
+create or replace function public.can_edit_task(p_task uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.is_admin() or exists (
+    select 1 from public.tasks t
+    where t.id = p_task and (
+      t.creador_id = auth.uid()
+      or t.responsable_id = auth.uid()
+      or public.has_role('coordinador_utl'::app_role)
+      or (t.workspace_id is not null and public.is_workspace_editor(t.workspace_id))
+      or exists (
+        select 1 from public.task_assignees ta
+        where ta.task_id = t.id and ta.user_id = auth.uid() and ta.rol = 'responsable'
+      )
+    )
+  );
+$$;
+
+-- ─────────────── RLS ───────────────
+alter table public.task_assignees enable row level security;
+alter table public.task_assignees force row level security;
+
+drop policy if exists task_assignees_read on public.task_assignees;
+create policy task_assignees_read on public.task_assignees for select to authenticated
+  using (public.is_staff());
+
+drop policy if exists task_assignees_write on public.task_assignees;
+create policy task_assignees_write on public.task_assignees for all to authenticated
+  using (public.can_edit_task(task_id))
+  with check (public.can_edit_task(task_id));
+
+-- ─────────────── Backfill: responsable_id actual → responsable ───────────────
+insert into public.task_assignees (task_id, user_id, rol)
+select id, responsable_id, 'responsable'
+from public.tasks
+where responsable_id is not null
+on conflict (task_id, user_id) do nothing;

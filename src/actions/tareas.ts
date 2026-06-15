@@ -28,30 +28,74 @@ export async function createTask(raw: unknown): Promise<ActionResult> {
   if (!user) return { ok: false, message: "Sesión no válida." };
 
   const v = parsed.data;
-  const { error } = await supabase.from("tasks").insert({
-    titulo: v.titulo,
-    descripcion: v.descripcion || null,
-    prioridad: v.prioridad,
-    estado: v.estado,
-    responsable_id: v.responsable_id || null,
-    workspace_id: v.workspace_id || null,
-    fecha_limite: v.fecha_limite || null,
-    creador_id: user.id,
-    contexto_operativo: v.contexto_operativo,
-  });
+  const responsables = v.responsables ?? [];
+  const participantes = (v.participantes ?? []).filter((p) => !responsables.includes(p));
 
-  if (error) {
+  const { data: created, error } = await supabase
+    .from("tasks")
+    .insert({
+      titulo: v.titulo,
+      descripcion: v.descripcion || null,
+      prioridad: v.prioridad,
+      estado: v.estado,
+      responsable_id: responsables[0] || v.responsable_id || null,
+      workspace_id: v.workspace_id || null,
+      fecha_limite: v.fecha_limite || null,
+      creador_id: user.id,
+      contexto_operativo: v.contexto_operativo,
+    })
+    .select("id")
+    .single();
+
+  if (error || !created) {
     return { ok: false, message: "No se pudo crear la tarea (¿permisos?)." };
   }
+
+  const rows = [
+    ...responsables.map((u) => ({ task_id: created.id, user_id: u, rol: "responsable" })),
+    ...participantes.map((u) => ({ task_id: created.id, user_id: u, rol: "participante" })),
+  ];
+  if (rows.length > 0) await supabase.from("task_assignees").insert(rows);
 
   revalidatePath("/dashboard/tareas");
   return { ok: true, message: "Tarea creada." };
 }
 
-/** Detalle de una tarea: historial, comentarios y checklist. */
+/** Agrega un responsable/participante a una tarea. */
+export async function addTaskAssignee(
+  taskId: string,
+  userId: string,
+  rol: "responsable" | "participante",
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("task_assignees")
+    .upsert({ task_id: taskId, user_id: userId, rol }, { onConflict: "task_id,user_id" });
+  if (error) return { ok: false, message: "No se pudo asignar (¿permisos?)." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Persona asignada." };
+}
+
+/** Quita una persona de una tarea. */
+export async function removeTaskAssignee(
+  taskId: string,
+  userId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("task_assignees")
+    .delete()
+    .eq("task_id", taskId)
+    .eq("user_id", userId);
+  if (error) return { ok: false, message: "No se pudo quitar." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Persona removida." };
+}
+
+/** Detalle de una tarea: historial, comentarios, checklist y asignados. */
 export async function getTaskDetail(taskId: string) {
   const supabase = await createClient();
-  const [{ data: history }, { data: comments }, { data: checklist }] =
+  const [{ data: history }, { data: comments }, { data: checklist }, { data: assignees }] =
     await Promise.all([
       supabase
         .from("task_history")
@@ -68,12 +112,25 @@ export async function getTaskDetail(taskId: string) {
         .select("*")
         .eq("task_id", taskId)
         .order("orden", { ascending: true }),
+      supabase.from("task_assignees").select("user_id, rol").eq("task_id", taskId),
     ]);
   return {
     history: history ?? [],
     comments: comments ?? [],
     checklist: checklist ?? [],
+    assignees: assignees ?? [],
   };
+}
+
+/** Asignados de varias tareas (para el tablero). */
+export async function getAssigneesFor(taskIds: string[]) {
+  if (taskIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("task_assignees")
+    .select("task_id, user_id, rol")
+    .in("task_id", taskIds);
+  return data ?? [];
 }
 
 /** Cambia el estado de una tarea. */
