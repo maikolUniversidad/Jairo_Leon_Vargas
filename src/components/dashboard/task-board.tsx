@@ -18,7 +18,7 @@ import {
   FileText,
 } from "lucide-react";
 
-import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { uploadToBucket } from "@/actions/storage";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,15 +250,14 @@ function TaskDetailDialog({
   async function uploadFile(file: File) {
     setUploading(true);
     try {
-      const supabase = createBrowserClient();
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${task.id}/${Date.now()}-${safe}`;
-      const { error } = await supabase.storage.from("task-files").upload(path, file);
-      if (error) { toast.error("No se pudo subir el archivo."); return; }
-      const { data: pub } = supabase.storage.from("task-files").getPublicUrl(path);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", task.id);
+      const up = await uploadToBucket("task-files", fd);
+      if (!up.ok || !up.data) { toast.error(up.message); return; }
       const res = await addTaskAttachment({
-        task_id: task.id, tipo: "archivo", nombre: file.name,
-        url: pub.publicUrl, storage_path: path, mime: file.type, size: file.size,
+        task_id: task.id, tipo: "archivo", nombre: up.data.name,
+        url: up.data.url, storage_path: up.data.path, mime: up.data.mime, size: up.data.size,
       });
       if (res.ok) load(); else toast.error(res.message);
     } finally {

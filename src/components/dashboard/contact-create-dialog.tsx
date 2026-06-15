@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { initials } from "@/lib/utils";
 import { CONTACT_TIPOS, CONTACT_TIPO_LABELS } from "@/types/database";
-import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { uploadToBucket } from "@/actions/storage";
 import { createContact } from "@/actions/contactos";
 
 interface ZoneOpt { id: string; nombre_zona: string }
@@ -46,12 +46,12 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
   async function uploadFoto(file: File) {
     setUploading(true);
     try {
-      const supabase = createBrowserClient();
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `fotos/${Date.now()}-${safe}`;
-      const { error } = await supabase.storage.from("contact-files").upload(path, file);
-      if (error) { toast.error("No se pudo subir la foto."); return; }
-      setFoto(supabase.storage.from("contact-files").getPublicUrl(path).data.publicUrl);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", "fotos");
+      const up = await uploadToBucket("contact-files", fd);
+      if (up.ok && up.data) setFoto(up.data.url);
+      else toast.error(up.message);
     } finally { setUploading(false); }
   }
 

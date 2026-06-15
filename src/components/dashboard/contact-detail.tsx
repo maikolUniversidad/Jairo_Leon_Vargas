@@ -19,7 +19,7 @@ import {
 import { TaskStatusBadge, PriorityBadge } from "@/lib/status";
 import { initials, formatDate } from "@/lib/utils";
 import { CONTACT_TIPO_LABELS, type Contact } from "@/types/database";
-import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { uploadToBucket } from "@/actions/storage";
 import {
   addRelation, removeRelation, addContactDocument, removeContactDocument, linkReferredCitizen,
 } from "@/actions/contactos";
@@ -67,14 +67,13 @@ export function ContactDetail({
   async function uploadDoc(file: File) {
     setUploading(true);
     try {
-      const supabase = createBrowserClient();
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${contact.id}/${Date.now()}-${safe}`;
-      const { error } = await supabase.storage.from("contact-files").upload(path, file);
-      if (error) { toast.error("No se pudo subir."); return; }
-      const url = supabase.storage.from("contact-files").getPublicUrl(path).data.publicUrl;
-      const res = await addContactDocument({ contact_id: contact.id, tipo: "archivo", nombre: file.name, url, storage_path: path, mime: file.type, size: file.size });
-      if (res.ok) { setDocuments((d) => [{ id: crypto.randomUUID(), tipo: "archivo", nombre: file.name, url, storage_path: path }, ...d]); }
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", contact.id);
+      const up = await uploadToBucket("contact-files", fd);
+      if (!up.ok || !up.data) { toast.error(up.message); return; }
+      const res = await addContactDocument({ contact_id: contact.id, tipo: "archivo", nombre: up.data.name, url: up.data.url, storage_path: up.data.path, mime: up.data.mime, size: up.data.size });
+      if (res.ok) { setDocuments((d) => [{ id: crypto.randomUUID(), tipo: "archivo", nombre: up.data!.name, url: up.data!.url, storage_path: up.data!.path }, ...d]); }
       else toast.error(res.message);
     } finally { setUploading(false); }
   }

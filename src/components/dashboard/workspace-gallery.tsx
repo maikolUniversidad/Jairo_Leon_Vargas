@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { WorkspaceMembersDialog } from "@/components/dashboard/workspace-members-dialog";
-import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { uploadToBucket } from "@/actions/storage";
 import { createWorkspace, updateWorkspace, type WorkspaceRow } from "@/actions/workspaces";
 
 interface PersonOption { id: string; full_name: string | null; email: string | null }
@@ -174,14 +174,12 @@ function EditWorkspaceDialog({
   async function uploadCover(file: File) {
     setUploading(true);
     try {
-      const supabase = createBrowserClient();
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${ws.id}/${Date.now()}-${safe}`;
-      const { error } = await supabase.storage.from("workspace-covers").upload(path, file, { upsert: true });
-      if (error) { toast.error("No se pudo subir la portada."); return; }
-      const { data } = supabase.storage.from("workspace-covers").getPublicUrl(path);
-      setPortada(data.publicUrl);
-      toast.success("Portada lista. Guarda para aplicar.");
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", ws.id);
+      const up = await uploadToBucket("workspace-covers", fd);
+      if (up.ok && up.data) { setPortada(up.data.url); toast.success("Portada lista. Guarda para aplicar."); }
+      else toast.error(up.message);
     } finally {
       setUploading(false);
     }
