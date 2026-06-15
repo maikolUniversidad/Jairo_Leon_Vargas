@@ -12,7 +12,13 @@ import {
   UserCog,
   Users,
   X,
+  Paperclip,
+  Link2,
+  Upload,
+  FileText,
 } from "lucide-react";
+
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,12 +55,23 @@ import {
   toggleChecklistItem,
   addTaskAssignee,
   removeTaskAssignee,
+  addTaskAttachment,
+  removeTaskAttachment,
   getTaskDetail,
 } from "@/actions/tareas";
 
 export interface Assignment {
   responsables: string[];
   participantes: string[];
+}
+
+interface Attachment {
+  id: string;
+  tipo: "archivo" | "link";
+  nombre: string;
+  url: string;
+  storage_path: string | null;
+  mime: string | null;
 }
 
 const COLUMNS: TaskStatus[] = [
@@ -211,10 +228,14 @@ function TaskDetailDialog({
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [checklist, setChecklist] = useState<TaskChecklistItem[]>([]);
   const [assignees, setAssignees] = useState<{ user_id: string; rol: string }[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [comment, setComment] = useState("");
   const [item, setItem] = useState("");
   const [addPerson, setAddPerson] = useState("");
   const [addRol, setAddRol] = useState<"responsable" | "participante">("responsable");
+  const [linkName, setLinkName] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const load = () => {
     getTaskDetail(task.id).then((d) => {
@@ -222,8 +243,28 @@ function TaskDetailDialog({
       setComments(d.comments as TaskComment[]);
       setChecklist(d.checklist as TaskChecklistItem[]);
       setAssignees(d.assignees as { user_id: string; rol: string }[]);
+      setAttachments(d.attachments as Attachment[]);
     });
   };
+
+  async function uploadFile(file: File) {
+    setUploading(true);
+    try {
+      const supabase = createBrowserClient();
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${task.id}/${Date.now()}-${safe}`;
+      const { error } = await supabase.storage.from("task-files").upload(path, file);
+      if (error) { toast.error("No se pudo subir el archivo."); return; }
+      const { data: pub } = supabase.storage.from("task-files").getPublicUrl(path);
+      const res = await addTaskAttachment({
+        task_id: task.id, tipo: "archivo", nombre: file.name,
+        url: pub.publicUrl, storage_path: path, mime: file.type, size: file.size,
+      });
+      if (res.ok) load(); else toast.error(res.message);
+    } finally {
+      setUploading(false);
+    }
+  }
   useEffect(load, [task.id]);
 
   const done = checklist.filter((c) => c.completado).length;
@@ -304,6 +345,73 @@ function TaskDetailDialog({
           >
             Agregar
           </Button>
+        </div>
+
+        {/* Archivos y enlaces (acumulativo) */}
+        <h4 className="mt-2 flex items-center gap-2 text-sm font-semibold">
+          <Paperclip className="size-4" /> Archivos y enlaces {attachments.length > 0 && `(${attachments.length})`}
+        </h4>
+        <ul className="space-y-1.5">
+          {attachments.length === 0 && (
+            <li className="text-sm text-muted-foreground">Sin adjuntos. Sube archivos o pega enlaces.</li>
+          )}
+          {attachments.map((at) => (
+            <li key={at.id} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+              {at.tipo === "link" ? <Link2 className="size-4 shrink-0 text-primary" /> : <FileText className="size-4 shrink-0 text-primary" />}
+              <a href={at.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">
+                {at.nombre}
+              </a>
+              <button
+                type="button" aria-label="Eliminar"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() =>
+                  start(async () => {
+                    const res = await removeTaskAttachment(at.id, at.storage_path);
+                    if (res.ok) load(); else toast.error(res.message);
+                  })
+                }
+              >
+                <X className="size-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col gap-2">
+          {/* Subir archivo */}
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50">
+            <Upload className="size-4" />
+            {uploading ? "Subiendo…" : "Subir archivo"}
+            <input
+              type="file"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadFile(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {/* Agregar enlace */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input placeholder="Nombre del enlace" value={linkName} onChange={(e) => setLinkName(e.target.value)} className="sm:w-40" />
+            <Input placeholder="https://…" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="flex-1" />
+            <Button
+              type="button" variant="outline"
+              onClick={() => {
+                if (!linkUrl.trim()) return toast.error("Pega un enlace.");
+                start(async () => {
+                  const res = await addTaskAttachment({
+                    task_id: task.id, tipo: "link",
+                    nombre: linkName.trim() || linkUrl.trim(), url: linkUrl.trim(),
+                  });
+                  if (res.ok) { setLinkName(""); setLinkUrl(""); load(); } else toast.error(res.message);
+                });
+              }}
+            >
+              <Link2 className="size-4" /> Enlace
+            </Button>
+          </div>
         </div>
 
         {/* Checklist */}

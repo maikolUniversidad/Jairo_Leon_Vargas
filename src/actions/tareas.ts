@@ -114,12 +114,64 @@ export async function getTaskDetail(taskId: string) {
         .order("orden", { ascending: true }),
       supabase.from("task_assignees").select("user_id, rol").eq("task_id", taskId),
     ]);
+  const { data: attachments } = await supabase
+    .from("task_attachments")
+    .select("*")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false });
   return {
     history: history ?? [],
     comments: comments ?? [],
     checklist: checklist ?? [],
     assignees: assignees ?? [],
+    attachments: attachments ?? [],
   };
+}
+
+/** Agrega un adjunto (archivo ya subido a Storage, o un enlace) a la tarea. */
+export async function addTaskAttachment(input: {
+  task_id: string;
+  tipo: "archivo" | "link";
+  nombre: string;
+  url: string;
+  storage_path?: string;
+  mime?: string;
+  size?: number;
+}): Promise<ActionResult> {
+  if (!input.url?.trim() || !input.nombre?.trim())
+    return { ok: false, message: "Faltan datos del adjunto." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("task_attachments").insert({
+    task_id: input.task_id,
+    tipo: input.tipo,
+    nombre: input.nombre.trim(),
+    url: input.url.trim(),
+    storage_path: input.storage_path ?? null,
+    mime: input.mime ?? null,
+    size: input.size ?? null,
+    created_by: user?.id ?? null,
+  });
+  if (error) return { ok: false, message: "No se pudo guardar el adjunto (¿permisos?)." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Adjunto agregado." };
+}
+
+/** Elimina un adjunto (y el objeto en Storage si aplica). */
+export async function removeTaskAttachment(
+  id: string,
+  storagePath?: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  if (storagePath) {
+    await supabase.storage.from("task-files").remove([storagePath]);
+  }
+  const { error } = await supabase.from("task_attachments").delete().eq("id", id);
+  if (error) return { ok: false, message: "No se pudo eliminar el adjunto." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Adjunto eliminado." };
 }
 
 /** Asignados de varias tareas (para el tablero). */

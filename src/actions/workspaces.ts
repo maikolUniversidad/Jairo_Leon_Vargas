@@ -14,6 +14,7 @@ export interface WorkspaceRow {
   nombre: string;
   descripcion: string | null;
   color: string;
+  portada_url: string | null;
   archivado: boolean;
   my_rol: WorkspaceRole | null;
 }
@@ -34,7 +35,7 @@ export async function listMyWorkspaces(): Promise<WorkspaceRow[]> {
   const [{ data: ws }, { data: mine }] = await Promise.all([
     supabase
       .from("workspaces")
-      .select("id, nombre, descripcion, color, archivado")
+      .select("id, nombre, descripcion, color, portada_url, archivado")
       .eq("archivado", false)
       .order("created_at", { ascending: true }),
     supabase.from("workspace_members").select("workspace_id, rol_workspace").eq("user_id", user.id),
@@ -48,9 +49,32 @@ export async function listMyWorkspaces(): Promise<WorkspaceRow[]> {
     nombre: w.nombre,
     descripcion: w.descripcion,
     color: w.color,
+    portada_url: w.portada_url ?? null,
     archivado: w.archivado,
     my_rol: rolByWs.get(w.id) ?? (user.isAdmin ? "owner" : null),
   }));
+}
+
+/** Actualiza datos del workspace (owner o admin). */
+export async function updateWorkspace(input: {
+  id: string;
+  nombre?: string;
+  descripcion?: string;
+  color?: string;
+  portada_url?: string;
+}): Promise<ActionResult> {
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = {};
+  if (input.nombre !== undefined) patch.nombre = input.nombre.trim();
+  if (input.descripcion !== undefined) patch.descripcion = input.descripcion.trim() || null;
+  if (input.color !== undefined) patch.color = input.color;
+  if (input.portada_url !== undefined) patch.portada_url = input.portada_url || null;
+  if (Object.keys(patch).length === 0) return { ok: true, message: "Sin cambios." };
+
+  const { error } = await supabase.from("workspaces").update(patch).eq("id", input.id);
+  if (error) return { ok: false, message: "No se pudo actualizar (¿permisos?)." };
+  revalidatePath("/dashboard/tareas");
+  return { ok: true, message: "Workspace actualizado." };
 }
 
 /** Crea un workspace y agrega al creador como owner. */

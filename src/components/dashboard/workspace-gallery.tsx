@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Users, Layers, ListChecks, FolderKanban } from "lucide-react";
+import { Plus, Users, Layers, ListChecks, FolderKanban, Pencil, ImageUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { WorkspaceMembersDialog } from "@/components/dashboard/workspace-members-dialog";
-import { createWorkspace, type WorkspaceRow } from "@/actions/workspaces";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { createWorkspace, updateWorkspace, type WorkspaceRow } from "@/actions/workspaces";
 
 interface PersonOption { id: string; full_name: string | null; email: string | null }
 type WsCard = WorkspaceRow & { taskCount: number; memberCount: number };
@@ -40,6 +41,7 @@ export function WorkspaceGallery({
 }) {
   const router = useRouter();
   const [membersWs, setMembersWs] = useState<WsCard | null>(null);
+  const [editWs, setEditWs] = useState<WsCard | null>(null);
 
   return (
     <>
@@ -81,15 +83,24 @@ export function WorkspaceGallery({
 
         {/* Workspaces */}
         {workspaces.map((w) => (
-          <Card key={w.id} className="group h-full transition-shadow hover:shadow-md">
-            <CardContent className="flex h-full flex-col gap-3 p-5">
-              <div className="flex items-start justify-between">
-                <span className="flex size-11 items-center justify-center rounded-xl text-white"
-                  style={{ background: w.color }}>
+          <Card key={w.id} className="group h-full overflow-hidden transition-shadow hover:shadow-md">
+            {/* Portada */}
+            <Link href={`/dashboard/tareas/${w.id}`} className="block">
+              <div className="relative h-24 w-full" style={{ background: w.color }}>
+                {w.portada_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={w.portada_url} alt={w.nombre} className="h-full w-full object-cover" />
+                )}
+                {w.my_rol && (
+                  <Badge variant="muted" className="absolute right-2 top-2">{ROL_LABEL[w.my_rol] ?? w.my_rol}</Badge>
+                )}
+                <span className="absolute -bottom-4 left-4 flex size-9 items-center justify-center rounded-xl border-2 border-background bg-background text-foreground shadow"
+                  style={{ color: w.color }}>
                   <FolderKanban className="size-5" />
                 </span>
-                {w.my_rol && <Badge variant="muted">{ROL_LABEL[w.my_rol] ?? w.my_rol}</Badge>}
               </div>
+            </Link>
+            <CardContent className="flex h-[calc(100%-6rem)] flex-col gap-3 p-5 pt-6">
               <Link href={`/dashboard/tareas/${w.id}`} className="flex-1">
                 <p className="font-semibold leading-tight">{w.nombre}</p>
                 {w.descripcion && (
@@ -102,9 +113,14 @@ export function WorkspaceGallery({
                   <span className="flex items-center gap-1"><Users className="size-3.5" />{w.memberCount}</span>
                 </span>
                 {w.my_rol === "owner" && (
-                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setMembersWs(w)}>
-                    <Users className="size-3.5" /> Miembros
-                  </Button>
+                  <span className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setEditWs(w)}>
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setMembersWs(w)}>
+                      <Users className="size-3.5" /> Miembros
+                    </Button>
+                  </span>
                 )}
               </div>
             </CardContent>
@@ -127,7 +143,92 @@ export function WorkspaceGallery({
           onOpenChange={(o) => !o && setMembersWs(null)}
         />
       )}
+
+      {editWs && (
+        <EditWorkspaceDialog
+          ws={editWs}
+          open={!!editWs}
+          onOpenChange={(o) => !o && setEditWs(null)}
+          onSaved={() => { setEditWs(null); router.refresh(); }}
+        />
+      )}
     </>
+  );
+}
+
+function EditWorkspaceDialog({
+  ws, open, onOpenChange, onSaved,
+}: {
+  ws: WsCard;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [nombre, setNombre] = useState(ws.nombre);
+  const [descripcion, setDescripcion] = useState(ws.descripcion ?? "");
+  const [color, setColor] = useState(ws.color);
+  const [portada, setPortada] = useState(ws.portada_url ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [pending, start] = useTransition();
+
+  async function uploadCover(file: File) {
+    setUploading(true);
+    try {
+      const supabase = createBrowserClient();
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${ws.id}/${Date.now()}-${safe}`;
+      const { error } = await supabase.storage.from("workspace-covers").upload(path, file, { upsert: true });
+      if (error) { toast.error("No se pudo subir la portada."); return; }
+      const { data } = supabase.storage.from("workspace-covers").getPublicUrl(path);
+      setPortada(data.publicUrl);
+      toast.success("Portada lista. Guarda para aplicar.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Editar workspace</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="relative h-28 overflow-hidden rounded-lg" style={{ background: color }}>
+            {portada && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={portada} alt="Portada" className="h-full w-full object-cover" />
+            )}
+            <label className="absolute bottom-2 right-2 flex cursor-pointer items-center gap-1 rounded-md bg-background/90 px-2 py-1 text-xs font-medium shadow hover:bg-background">
+              <ImageUp className="size-3.5" /> {uploading ? "Subiendo…" : "Cambiar portada"}
+              <input type="file" accept="image/*" className="hidden" disabled={uploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
+            </label>
+          </div>
+          <div>
+            <Label htmlFor="e-nombre">Nombre</Label>
+            <Input id="e-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="e-desc">Descripción</Label>
+            <Textarea id="e-desc" rows={3} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="e-color">Color</Label>
+            <input id="e-color" type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-14 rounded border" />
+          </div>
+          <Button
+            className="w-full" disabled={pending || uploading}
+            onClick={() =>
+              start(async () => {
+                const res = await updateWorkspace({ id: ws.id, nombre, descripcion, color, portada_url: portada });
+                if (res.ok) { toast.success(res.message); onSaved(); } else toast.error(res.message);
+              })
+            }
+          >
+            {pending ? "Guardando…" : "Guardar cambios"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
