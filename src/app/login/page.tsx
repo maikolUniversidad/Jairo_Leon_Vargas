@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Wordmark } from "@/components/marca";
+import { LogoJLV } from "@/components/marca";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 import { signIn } from "@/actions/auth";
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
         <Card>
           <CardContent className="p-8">
             <div className="mb-6 flex flex-col items-center text-center">
-              <Wordmark className="items-center" />
+              <LogoJLV className="h-16" priority />
               <h1 className="mt-4 text-xl font-bold">Ingreso del equipo</h1>
               <p className="text-sm text-muted-foreground">Plataforma UTL 360</p>
             </div>

@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Facebook, Instagram, Youtube, LogIn } from "lucide-react";
 
-import { Wordmark } from "@/components/marca";
+import { LogoJLV } from "@/components/marca";
 
 export function SiteFooter() {
   return (
@@ -9,9 +10,7 @@ export function SiteFooter() {
       <div className="h-1 w-full bg-franja" />
       <div className="container grid gap-8 py-12 md:grid-cols-4">
         <div className="md:col-span-2">
-          <div className="text-white">
-            <Wordmark />
-          </div>
+          <LogoJLV className="h-12" />
           <p className="mt-3 max-w-md text-sm">
             Gestión social, participación ciudadana y trabajo comunitario para
             Bogotá y Colombia. Este sitio prioriza hechos verificables y canales
@@ -27,6 +26,19 @@ export function SiteFooter() {
             <a href="#" aria-label="YouTube" className="rounded-full bg-white/10 p-2 hover:bg-white/20">
               <Youtube className="size-4" />
             </a>
+          </div>
+
+          <div className="mt-6">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/50">En coalición con</p>
+            <span className="inline-flex rounded-xl bg-white p-2.5 shadow-sm">
+              <Image
+                src="/pacto-historico.png"
+                alt="Coalición Pacto Histórico"
+                width={702}
+                height={355}
+                className="h-9 w-auto"
+              />
+            </span>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   ArrowDown,
@@ -114,6 +115,21 @@ export default async function HomePage() {
             <p className="mt-7 text-xs uppercase tracking-[0.2em] text-white/60">
               {perfil.movimiento}
             </p>
+
+            <div className="mt-5 flex items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+                En coalición con
+              </span>
+              <span className="inline-flex rounded-lg bg-white p-2 shadow-md">
+                <Image
+                  src="/pacto-historico.png"
+                  alt="Coalición Pacto Histórico"
+                  width={702}
+                  height={355}
+                  className="h-7 w-auto"
+                />
+              </span>
+            </div>
           </div>
         </div>
 

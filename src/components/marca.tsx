@@ -1,4 +1,29 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/utils";
+
+/**
+ * Logo oficial "JAIRO LEÓN VARGAS" (PNG · Reserva Morado). Escala por altura:
+ * pasa `className="h-10"` (o la que corresponda) para fijar el tamaño.
+ */
+export function LogoJLV({
+  className,
+  priority = false,
+}: {
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <Image
+      src="/logo-jlv.png"
+      alt="Jairo León Vargas"
+      width={711}
+      height={348}
+      priority={priority}
+      className={cn("h-10 w-auto", className)}
+    />
+  );
+}
 
 /**
  * Franja multicolor — el elemento firma de la marca Jairo León Vargas.

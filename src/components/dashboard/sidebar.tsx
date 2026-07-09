@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, X, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Wordmark } from "@/components/marca";
+import { LogoJLV } from "@/components/marca";
 import { DASHBOARD_NAV, type NavItem, type SubNavItem } from "./nav";
 
 export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
@@ -125,7 +125,7 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
       <aside className="hidden w-64 shrink-0 flex-col bg-secondary text-white lg:flex">
         <div className="h-1 w-full bg-franja" />
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
-          <Wordmark />
+          <LogoJLV className="h-9" />
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/80">
             UTL 360
           </span>
@@ -140,7 +140,7 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-secondary text-white">
             <div className="h-1 w-full bg-franja" />
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
-              <Wordmark />
+              <LogoJLV className="h-9" />
               <button onClick={() => setOpen(false)} aria-label="Cerrar">
                 <X className="size-5" />
               </button>

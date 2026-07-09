@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu, X, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/marca";
+import { LogoJLV } from "@/components/marca";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -26,7 +26,7 @@ export function SiteHeader() {
       <div className="h-1 w-full bg-franja" />
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="Inicio — Jairo León Vargas">
-          <Wordmark />
+          <LogoJLV priority className="h-10" />
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
