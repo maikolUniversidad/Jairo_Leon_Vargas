@@ -93,7 +93,7 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 
 export type Confidentiality = "publico" | "interno" | "reservado";
 
-export type ZoneType = "localidad" | "barrio" | "upz" | "municipio" | "vereda";
+export type ZoneType = "localidad" | "barrio" | "upz" | "municipio" | "vereda" | "departamento";
 
 export interface Profile {
   id: string;
@@ -110,6 +110,70 @@ export interface Profile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type MonitorRelacion = "propio" | "aliado" | "contraposicion" | "neutral" | "objetivo";
+
+export const MONITOR_RELACION_LABELS: Record<MonitorRelacion, string> = {
+  propio: "Propio",
+  aliado: "Aliado",
+  contraposicion: "Contraposición",
+  neutral: "Neutral",
+  objetivo: "Objetivo",
+};
+
+export interface MonitorPerson {
+  id: string;
+  nombre: string;
+  alias: string[];
+  relacion: MonitorRelacion;
+  cargo: string | null;
+  partido: string | null;
+  foto_url: string | null;
+  etiquetas: string[];
+  handles: Record<string, string>;
+  keywords: string[];
+  notas: string | null;
+  ultimo_analisis: string | null;
+  analisis_at: string | null;
+  ultima_recoleccion: string | null;
+  auto_activo: boolean;
+  auto_frecuencia: string;
+  auto_hora: number;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonitorRun {
+  id: string;
+  person_id: string;
+  fuentes: string[];
+  total: number;
+  resultado: Record<string, string>;
+  tipo: string;
+  created_at: string;
+}
+
+export interface MonitorItem {
+  id: string;
+  person_id: string;
+  fuente: string;
+  tipo: string;
+  titulo: string | null;
+  contenido: string | null;
+  url: string | null;
+  autor: string | null;
+  autor_handle: string | null;
+  sentimiento: string | null;
+  relevancia: number;
+  published_at: string | null;
+  fetched_at: string;
+  resumen: string | null;
+  es_directo: boolean | null;
+  etiquetas: string[];
+  analisis: string | null;
+  analizado_at: string | null;
 }
 
 export interface UserLocation {
@@ -310,6 +374,7 @@ export interface Zone {
   prioridad: Priority;
   problematicas: string[] | null;
   mapa_url: string | null;
+  codigo_geo: string | null;
   estado: string;
   created_at: string;
   updated_at: string;
@@ -451,4 +516,184 @@ export interface ContentPost {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+}
+
+/* ──────────────── Comunicaciones · Avatares (personajes de marca) ──────────────── */
+
+export type AvatarJobTipo = "imagen" | "video" | "voz" | "3d";
+export type AvatarJobEstado = "pendiente" | "procesando" | "listo" | "error";
+
+export const AVATAR_JOB_TIPO_LABELS: Record<AvatarJobTipo, string> = {
+  imagen: "Imagen",
+  video: "Video",
+  voz: "Voz",
+  "3d": "3D",
+};
+
+export const AVATAR_JOB_ESTADO_LABELS: Record<AvatarJobEstado, string> = {
+  pendiente: "Pendiente",
+  procesando: "Procesando",
+  listo: "Listo",
+  error: "Error",
+};
+
+export interface Avatar {
+  id: string;
+  nombre: string;
+  slug: string | null;
+  arquetipo: string | null;
+  descripcion: string | null;
+  personalidad: string | null;
+  tono: string | null;
+  valores: string[];
+  estilo_visual: string | null;
+  foto_refs: string[];
+  avatar_url: string | null;
+  voice_provider: string;
+  voice_id: string | null;
+  voice_name: string | null;
+  voice_settings: Record<string, unknown>;
+  modelo_imagen: string | null;
+  modelo_video: string | null;
+  activo: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface AvatarModel {
+  clave: string;
+  proveedor: string;
+  tipo: AvatarJobTipo;
+  label: string;
+  descripcion: string | null;
+  params_schema: Record<string, unknown>;
+  activo: boolean;
+  orden: number;
+}
+
+export interface AvatarJob {
+  id: string;
+  avatar_id: string;
+  tipo: AvatarJobTipo;
+  modelo: string | null;
+  proveedor: string | null;
+  titulo: string | null;
+  prompt: string | null;
+  params: Record<string, unknown>;
+  input_refs: string[];
+  estado: AvatarJobEstado;
+  provider_job_id: string | null;
+  output_url: string | null;
+  output_meta: Record<string, unknown>;
+  error_msg: string | null;
+  post_id: string | null;
+  cobertura_id: string | null;
+  drive_file_id: string | null;
+  person_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ──────────────── Comunicaciones · Producción de video (IA) ──────────────── */
+
+export type VideoFase =
+  | "idea"
+  | "investigacion"
+  | "guion"
+  | "produccion"
+  | "edicion"
+  | "aprobado"
+  | "publicado";
+
+export const VIDEO_FASES: VideoFase[] = [
+  "idea",
+  "investigacion",
+  "guion",
+  "produccion",
+  "edicion",
+  "aprobado",
+  "publicado",
+];
+
+export const VIDEO_FASE_LABELS: Record<VideoFase, string> = {
+  idea: "Idea",
+  investigacion: "Investigación",
+  guion: "Guión",
+  produccion: "Producción",
+  edicion: "Edición",
+  aprobado: "Aprobado",
+  publicado: "Publicado",
+};
+
+export type GenerationKind = "imagen" | "video";
+export type GenerationStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface VideoProject {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  fase: VideoFase;
+  objetivo: string | null;
+  plataformas: string[];
+  guion: string | null;
+  copy_text: string | null;
+  descripcion_video: string | null;
+  titulos: string[];
+  hashtags: string[];
+  portada_url: string | null;
+  post_id: string | null;
+  cobertura_id: string | null;
+  responsable_id: string | null;
+  contexto_operativo: ContextoOperativo;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface VideoResearchNote {
+  id: string;
+  project_id: string;
+  tema: string;
+  contenido: string | null;
+  fuentes: { title: string; url: string; snippet?: string }[];
+  fuente_ia: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface VideoGeneration {
+  id: string;
+  project_id: string;
+  kind: GenerationKind;
+  prompt: string;
+  status: GenerationStatus;
+  provider: string;
+  external_id: string | null;
+  result_url: string | null;
+  error: string | null;
+  params: Record<string, unknown>;
+  is_portada: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VideoViralityAnalysis {
+  id: string;
+  project_id: string;
+  target: string;
+  input_ref: string | null;
+  score: number | null;
+  veredicto: string | null;
+  fortalezas: string[];
+  riesgos: string[];
+  recomendaciones: string[];
+  raw: Record<string, unknown>;
+  fuente: string | null;
+  created_by: string | null;
+  created_at: string;
 }

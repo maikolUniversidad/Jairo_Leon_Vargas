@@ -3,7 +3,7 @@ import { createSignedUpload } from "@/actions/storage";
 import { finalizeToDrive } from "@/actions/google";
 import { addCoberturaFile, type Fase } from "@/actions/coberturas";
 
-type Bucket = "task-files" | "contact-files" | "workspace-covers" | "coberturas" | "contenido";
+type Bucket = "task-files" | "contact-files" | "workspace-covers" | "coberturas" | "contenido" | "avatars";
 
 export interface UploadResult {
   ok: boolean;

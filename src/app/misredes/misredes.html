@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Jairo León Vargas · Cámara por Bogotá</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   PALETA (marca Jairo + Pacto Histórico) — editable desde CONFIG.colores
+   ───────────────────────────────────────────────────────────────── */
+:root{
+  --ink:#1c0822; --brand:#a73194; --brand-deep:#7a2470; --brand-glow:#c94fb4;
+  --c1:#f2a03d; --c2:#2e3192; --c3:#e4322b; --c4:#10984e; --c5:#7a2e7e;
+  --wa:#25d366;
+  --text:#fff; --muted:rgba(255,255,255,.70); --faint:rgba(255,255,255,.46);
+  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.09); --glass-line:rgba(255,255,255,.13);
+  --radius:20px; --gap:14px; --maxw:452px;
+}
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html{ -webkit-text-size-adjust:100%; }
+body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--text);
+  background:var(--ink); min-height:100dvh; overflow-x:hidden; line-height:1.5; position:relative;
+  padding:max(22px,env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom)); }
+
+/* Aurora */
+.aurora{ position:fixed; inset:-25%; z-index:-3; filter:blur(72px); opacity:.82; }
+.blob{ position:absolute; border-radius:50%; mix-blend-mode:screen; will-change:transform; }
+.b1{ width:60vw; height:60vw; background:var(--brand); top:-8%; left:-12%; animation:drift1 21s ease-in-out infinite; }
+.b2{ width:66vw; height:66vw; background:var(--c5); top:16%; right:-20%; animation:drift2 27s ease-in-out infinite; }
+.b3{ width:52vw; height:52vw; background:var(--brand-glow); bottom:-6%; left:6%; animation:drift3 24s ease-in-out infinite; }
+.b4{ width:32vw; height:32vw; background:var(--c1); top:46%; left:40%; opacity:.4; animation:drift1 32s ease-in-out infinite reverse; }
+@keyframes drift1{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(6vw,5vw) scale(1.12)} }
+@keyframes drift2{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-7vw,4vw) scale(1.08)} }
+@keyframes drift3{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(4vw,-6vw) scale(1.15)} }
+.grain{ position:fixed; inset:0; z-index:-2; pointer-events:none; opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.vignette{ position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(120% 80% at 50% 0%, transparent 55%, rgba(8,2,12,.55) 100%); }
+.spotlight{ position:fixed; z-index:0; pointer-events:none; width:520px; height:520px; left:0; top:0;
+  transform:translate(-50%,-50%); opacity:0; transition:opacity .4s;
+  background:radial-gradient(circle, rgba(201,79,180,.12), transparent 60%); }
+
+.wrap{ width:100%; max-width:var(--maxw); margin:0 auto; position:relative; z-index:2; }
+.reveal{ opacity:0; transform:translateY(18px); animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes rise{ to{ opacity:1; transform:none; } }
+
+/* Héroe */
+.eyebrow{ text-align:center; font-size:11px; font-weight:600; letter-spacing:.22em; text-transform:uppercase; color:var(--faint); margin-bottom:18px; }
+.avatar-shell{ display:flex; justify-content:center; margin-bottom:14px; }
+.avatar{ position:relative; width:96px; height:96px; }
+.avatar .ring{ position:absolute; inset:-4px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--brand), var(--c1), var(--c5), var(--brand-glow), var(--brand)); animation:spin 6s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.avatar .photo{ position:absolute; inset:0; border-radius:50%; overflow:hidden; border:4px solid var(--ink); background:var(--brand-deep); }
+.avatar .photo img{ width:100%; height:100%; object-fit:cover; }
+.hero-logo{ display:block; width:min(76%,300px); margin:0 auto 14px;
+  filter:drop-shadow(0 14px 34px rgba(167,49,148,.45)) drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+.role{ text-align:center; font-size:15px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.role .yrs{ color:var(--brand-glow); }
+.pactobar{ display:flex; gap:5px; width:min(72%,280px); margin:12px auto 14px; }
+.pactobar i{ flex:1; height:6px; border-radius:99px; transform-origin:left; transform:scaleX(0); animation:barin .5s cubic-bezier(.2,.7,.2,1) forwards; }
+.pactobar i:nth-child(1){ background:var(--c1); animation-delay:.15s; }
+.pactobar i:nth-child(2){ background:var(--c2); animation-delay:.25s; }
+.pactobar i:nth-child(3){ background:var(--c3); animation-delay:.35s; }
+.pactobar i:nth-child(4){ background:var(--c4); animation-delay:.45s; }
+.pactobar i:nth-child(5){ background:var(--c5); animation-delay:.55s; }
+@keyframes barin{ to{ transform:scaleX(1); } }
+.bio{ text-align:center; font-size:14px; color:var(--muted); max-width:330px; margin:0 auto 16px; }
+.chips{ display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-bottom:24px; }
+.chips span{ font-size:11.5px; font-weight:500; padding:5px 11px; border-radius:999px; background:var(--glass); border:1px solid var(--glass-line); color:var(--muted); }
+
+/* Foto destacada (editable desde el panel) */
+.featured{ margin:0 auto 24px; padding:3px; border-radius:22px; background:linear-gradient(135deg,var(--brand),var(--c1),var(--c5)); box-shadow:0 16px 40px rgba(167,49,148,.3),0 3px 10px rgba(0,0,0,.35); }
+.featured img{ display:block; width:100%; aspect-ratio:3/2; object-fit:cover; object-position:center; border-radius:19px; }
+
+/* Redes */
+.socials{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:28px; }
+.socials a{ width:46px; height:46px; border-radius:14px; display:grid; place-items:center; background:var(--glass); border:1px solid var(--glass-line); color:var(--text); transition:transform .2s, background .25s, box-shadow .25s; }
+.socials a svg{ width:20px; height:20px; }
+.socials a:hover{ transform:translateY(-4px) scale(1.06); background:var(--glass-2); box-shadow:0 10px 24px rgba(167,49,148,.34); }
+.socials a:focus-visible{ outline:2px solid var(--brand-glow); outline-offset:3px; }
+
+/* Tarjetón (solo si campaña activa) */
+.ballot{ margin:4px auto 28px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+.ballot-label{ font-size:12px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--faint); }
+.casilla{ position:relative; width:150px; height:150px; border:none; cursor:pointer; background:#faf7f0; border-radius:16px; display:grid; place-items:center;
+  box-shadow:0 18px 46px rgba(167,49,148,.36),0 3px 10px rgba(0,0,0,.35); font-family:'Bricolage Grotesque'; overflow:hidden; transition:transform .18s ease; }
+.casilla::after{ content:""; position:absolute; top:0; left:-60%; width:45%; height:100%; background:linear-gradient(115deg,transparent,rgba(255,255,255,.75),transparent); transform:skewX(-18deg); animation:sheen 1.6s ease-out .5s 1; }
+@keyframes sheen{ from{left:-60%} to{left:150%} }
+.casilla:active{ transform:scale(.95); }
+.casilla .num{ font-weight:800; font-size:76px; color:#1a1130; letter-spacing:-.03em; line-height:1; }
+.casilla svg.x{ position:absolute; inset:0; width:100%; height:100%; }
+.casilla svg.x line{ stroke:var(--brand); stroke-width:11; stroke-linecap:round; stroke-dasharray:220; stroke-dashoffset:220; }
+.casilla.marked svg.x line{ animation:draw .5s cubic-bezier(.6,0,.3,1) forwards; }
+.casilla.marked svg.x line:nth-child(2){ animation-delay:.18s; }
+@keyframes draw{ to{ stroke-dashoffset:0; } }
+.ballot-hint{ font-size:12.5px; color:var(--faint); }
+.ballot-hint b{ color:var(--brand-glow); font-weight:600; }
+.countdown{ background:var(--glass); border:1px solid var(--glass-line); border-radius:var(--radius); padding:16px 14px 18px; margin:0 auto 26px; text-align:center; }
+.countdown .cd-top{ font-size:12px; font-weight:600; color:var(--muted); margin-bottom:12px; }
+.countdown .cd-top b{ color:var(--brand-glow); }
+.cd-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.cd-cell .n{ font-family:'Bricolage Grotesque'; font-weight:800; font-size:30px; line-height:1; color:#fff; font-variant-numeric:tabular-nums; }
+.cd-cell .l{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-top:5px; }
+.cd-day{ font-family:'Bricolage Grotesque'; font-weight:800; font-size:22px; color:var(--brand-glow); }
+
+/* Destacadas (portadas reales JAIRO) */
+.dest-wrap{ margin-bottom:28px; }
+.destacadas{ display:flex; gap:14px; justify-content:center; overflow-x:auto; padding:4px 2px 6px; scrollbar-width:none; }
+.destacadas::-webkit-scrollbar{ display:none; }
+.dest{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:7px; text-decoration:none; color:var(--muted); transition:transform .2s; }
+.dest:hover{ transform:translateY(-3px); }
+.dest .circle{ width:64px; height:64px; border-radius:50%; overflow:hidden; border:2px solid rgba(255,255,255,.32); box-shadow:0 6px 18px rgba(167,49,148,.35); background:var(--brand-deep); }
+.dest .circle img{ width:100%; height:100%; object-fit:cover; display:block; }
+.dest .dlabel{ font-size:11px; font-weight:500; }
+.dest:focus-visible .circle{ outline:2px solid var(--brand-glow); outline-offset:2px; }
+
+/* Enlaces */
+.section-h{ font-size:12px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--faint); margin:0 4px 12px; }
+.links{ display:flex; flex-direction:column; gap:var(--gap); margin-bottom:30px; }
+.link{ position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:15px 16px; border-radius:var(--radius); text-decoration:none; color:var(--text);
+  background:var(--glass); border:1px solid var(--glass-line); cursor:pointer; transition:transform .18s ease, background .25s, border-color .25s, box-shadow .25s; }
+.link:hover{ transform:translateY(-3px); background:var(--glass-2); border-color:rgba(255,255,255,.24); box-shadow:0 14px 30px rgba(0,0,0,.28); }
+.link:focus-visible{ outline:2px solid var(--brand-glow); outline-offset:3px; }
+.link .ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.06); }
+.link .ic svg{ width:24px; height:24px; }
+.link .tx{ flex:1; min-width:0; }
+.link .tt{ font-weight:600; font-size:15px; }
+.link .sub{ font-size:12px; color:var(--faint); }
+.link .arrow{ flex:0 0 auto; color:var(--faint); transition:transform .25s, color .25s; }
+.link:hover .arrow{ transform:translateX(4px); color:var(--brand-glow); }
+.link.wa{ background:linear-gradient(120deg, rgba(37,211,102,.20), rgba(167,49,148,.14)); border-color:rgba(37,211,102,.4); }
+.link.wa .ic{ background:rgba(37,211,102,.22); color:var(--wa); }
+.link.wa:hover{ box-shadow:0 16px 34px rgba(37,211,102,.26); }
+.link.wa:hover .arrow{ color:var(--wa); }
+.ripple{ position:absolute; border-radius:50%; transform:scale(0); pointer-events:none; background:rgba(255,255,255,.35); animation:rip .55s ease-out forwards; }
+@keyframes rip{ to{ transform:scale(2.4); opacity:0; } }
+
+/* En qué trabajo */
+.focus{ display:flex; flex-direction:column; gap:11px; margin-bottom:30px; }
+.fcard{ display:flex; align-items:center; gap:14px; padding:15px 16px 15px 14px; border-radius:16px; background:var(--glass); border:1px solid var(--glass-line); border-left:4px solid var(--accent,var(--brand)); }
+.fcard .fic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:color-mix(in srgb, var(--accent,var(--brand)) 22%, transparent); }
+.fcard .ft{ font-weight:600; font-size:15px; }
+.fcard .fx{ font-size:12.5px; color:var(--muted); }
+
+/* Prensa y comunicaciones (acordeón) */
+.press{ margin-bottom:30px; border-radius:var(--radius); background:var(--glass); border:1px solid var(--glass-line); overflow:hidden; }
+.press-head{ width:100%; display:flex; align-items:center; gap:14px; padding:15px 16px; background:none; border:none; color:var(--text); cursor:pointer; font-family:inherit; }
+.press-head .ph-ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.06); }
+.press-head .ph-t{ flex:1; text-align:left; font-weight:600; font-size:15px; }
+.press-head .ph-chev{ color:var(--faint); transition:transform .3s; display:flex; }
+.press.open .ph-chev{ transform:rotate(180deg); }
+.press-body{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+.press-item{ display:flex; align-items:center; gap:12px; padding:13px 16px 13px 18px; text-decoration:none; color:var(--text); border-top:1px solid var(--glass-line); }
+.press-item:hover{ background:var(--glass-2); }
+.press-item .pi-ic{ font-size:18px; flex:0 0 auto; }
+.press-item .pi-t{ flex:1; font-size:14px; font-weight:500; }
+.press-item .pi-t b{ font-weight:600; }
+.press-item .pi-sub{ font-size:12.5px; color:var(--muted); font-weight:400; }
+.press-item .pi-ar{ flex:0 0 auto; color:var(--faint); display:flex; }
+.press-item .pi-ar svg{ width:20px; height:20px; }
+.press-item[href]:hover .pi-ar{ color:var(--brand-glow); }
+
+/* Compartir + pie */
+.share{ width:100%; display:flex; align-items:center; justify-content:center; gap:9px; padding:15px; border-radius:var(--radius); font-family:inherit; font-weight:600; font-size:14.5px; color:#fff;
+  background:linear-gradient(120deg, var(--brand), var(--brand-glow)); border:none; cursor:pointer; margin-bottom:26px; transition:transform .18s, box-shadow .25s; }
+.share:hover{ transform:translateY(-3px); box-shadow:0 14px 30px rgba(167,49,148,.4); }
+.share:active{ transform:scale(.97); }
+.share svg{ width:19px; height:19px; }
+.coalicion{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:14px; }
+.coalicion img{ width:150px; opacity:.95; }
+.coalicion span{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); }
+.foot{ text-align:center; font-size:11.5px; color:var(--faint); line-height:1.7; }
+.foot .place{ display:inline-flex; align-items:center; gap:5px; }
+.foot .gear{ display:inline-block; margin-top:12px; opacity:.28; cursor:pointer; transition:opacity .2s; background:none; border:none; color:var(--faint); }
+.foot .gear:hover{ opacity:.7; }
+.foot .gear svg{ width:16px; height:16px; }
+
+.toast{ position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px); background:rgba(20,8,26,.94); border:1px solid var(--glass-line); color:#fff; padding:11px 18px; border-radius:999px; font-size:13px; font-weight:500; z-index:120; opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; backdrop-filter:blur(8px); box-shadow:0 10px 30px rgba(0,0,0,.4); }
+.toast.show{ opacity:1; transform:translate(-50%,0); }
+.confetti-piece{ position:fixed; z-index:40; pointer-events:none; will-change:transform,opacity; }
+
+/* ─────────────────────────────────────────────────────────────────
+   PANEL DE ADMINISTRACIÓN
+   ───────────────────────────────────────────────────────────────── */
+.adm-overlay{ position:fixed; inset:0; z-index:100; background:rgba(12,4,16,.72); backdrop-filter:blur(6px);
+  display:none; align-items:flex-start; justify-content:center; overflow-y:auto; padding:20px 14px 60px; }
+.adm-overlay.open{ display:flex; }
+.adm-panel{ width:100%; max-width:540px; background:#241030; border:1px solid var(--glass-line); border-radius:24px; padding:22px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+.adm-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.adm-head h2{ font-family:'Bricolage Grotesque'; font-weight:800; font-size:22px; }
+.adm-x{ background:var(--glass); border:1px solid var(--glass-line); color:#fff; width:36px; height:36px; border-radius:10px; cursor:pointer; font-size:18px; }
+.adm-sub{ font-size:12.5px; color:var(--faint); margin-bottom:18px; }
+.adm-sec{ background:var(--glass); border:1px solid var(--glass-line); border-radius:16px; padding:15px; margin-bottom:14px; }
+.adm-sec h3{ font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--brand-glow); margin-bottom:12px; }
+.adm-photo-prev{ width:100%; aspect-ratio:3/2; border-radius:12px; overflow:hidden; background:rgba(0,0,0,.25); border:1px dashed var(--glass-line); display:grid; place-items:center; color:var(--faint); font-size:12px; margin-bottom:8px; }
+.adm-photo-prev img{ width:100%; height:100%; object-fit:cover; }
+.adm-photo-btns{ display:flex; gap:8px; margin-bottom:8px; }
+.adm-upl{ flex:1; text-align:center; padding:9px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-line); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.adm-upl.del:hover{ background:rgba(228,50,43,.25); }
+.adm-field{ margin-bottom:11px; }
+.adm-field:last-child{ margin-bottom:0; }
+.adm-field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-weight:500; }
+.adm-input{ width:100%; padding:11px 12px; border-radius:11px; border:1px solid var(--glass-line); background:rgba(0,0,0,.25); color:#fff; font-family:inherit; font-size:14px; }
+.adm-input::placeholder{ color:rgba(255,255,255,.32); }
+.adm-input:focus{ outline:none; border-color:var(--brand-glow); }
+.adm-row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.adm-switch{ display:flex; align-items:center; gap:10px; }
+.adm-switch input{ width:20px; height:20px; accent-color:var(--brand); }
+.adm-enl{ background:rgba(0,0,0,.22); border:1px solid var(--glass-line); border-radius:12px; padding:11px; margin-bottom:10px; }
+.adm-enl .adm-enl-top{ display:flex; gap:8px; margin-bottom:8px; }
+.adm-enl .adm-enl-top .emoji{ width:52px; text-align:center; }
+.adm-enl .adm-enl-actions{ display:flex; gap:6px; justify-content:flex-end; }
+.adm-mini{ background:var(--glass); border:1px solid var(--glass-line); color:#fff; border-radius:9px; width:34px; height:32px; cursor:pointer; font-size:14px; }
+.adm-mini.del:hover{ background:rgba(228,50,43,.3); border-color:rgba(228,50,43,.5); }
+.adm-add{ width:100%; padding:11px; border-radius:11px; border:1px dashed var(--glass-line); background:transparent; color:var(--brand-glow); font-family:inherit; font-weight:600; cursor:pointer; }
+.adm-actions{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+.adm-btn{ width:100%; padding:14px; border-radius:13px; border:none; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; }
+.adm-btn.primary{ background:linear-gradient(120deg,var(--brand),var(--brand-glow)); color:#fff; }
+.adm-btn.ghost{ background:var(--glass); border:1px solid var(--glass-line); color:#fff; }
+.adm-note{ font-size:12px; color:var(--faint); text-align:center; padding:8px 0; }
+.adm-note b{ color:var(--brand-glow); }
+.adm-login{ text-align:center; padding:14px 4px; }
+.adm-login h2{ font-family:'Bricolage Grotesque'; font-weight:800; font-size:24px; margin-bottom:6px; }
+.adm-login p{ font-size:12.5px; color:var(--faint); margin-bottom:18px; }
+.adm-err{ color:#ff8a8a; font-size:12.5px; min-height:16px; margin-top:8px; }
+
+@media (prefers-reduced-motion:reduce){
+  .aurora,.avatar .ring{ animation:none; }
+  .casilla::after{ display:none; }
+  .casilla.marked svg.x line{ animation:none; stroke-dashoffset:0; }
+  .reveal,.pactobar i{ animation:none; opacity:1; transform:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="aurora"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span></div>
+<div class="grain"></div>
+<div class="vignette"></div>
+<div class="spotlight" id="spotlight"></div>
+
+<main class="wrap" id="app"></main>
+
+<!-- panel admin -->
+<div class="adm-overlay" id="admOverlay"><div class="adm-panel" id="admPanel"></div></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Supabase (para el panel de administración). Si no se configura, la página funciona igual con los valores por defecto. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   🔐  CONEXIÓN CON SUPABASE  (inyectada por el servidor desde el entorno)
+   ─────────────────────────────────────────────────────────────── */
+const SUPA_URL = "__SUPA_URL__";   // ej: https://xxxxxxxx.supabase.co
+const SUPA_KEY = "__SUPA_KEY__";   // anon public key (empieza por eyJ... o sb_publishable_...)
+
+/* ─────────────────────────────────────────────────────────────────
+   ⚙️  VALORES POR DEFECTO
+   (lo que se ve si aún no configuras Supabase, o como base inicial)
+   ───────────────────────────────────────────────────────────────── */
+const DEFAULTS = {
+  nombre:"Jairo León Vargas",
+  cargo:"Representante a la Cámara por Bogotá",
+  periodo:"2026–2030",
+  bio:"Defendiendo la dignidad en Bogotá.",
+  eyebrow:"Cámara de Representantes · Bogotá",
+  trayectoria:["Exalcalde de San Cristóbal","Ex-DPS","Ex-MinSalud"],
+  fotoUrl:"",
+  fotoDestacada:"",
+
+  campana:{ activa:false, numero:"00", fechaEleccion:"" },
+
+  whatsapp:"57XXXXXXXXXX",
+
+  // Redes: deja url vacía para ocultar. Se editan desde el panel admin.
+  redes:{
+    instagram:"https://instagram.com/jairo_leon_vargas",
+    tiktok:"https://www.tiktok.com/@jairo.leon.vargas",
+    youtube:"",
+    x:"",
+    threads:"",
+    facebook:""
+  },
+
+  // Destacadas JAIRO (las portadas reales); solo se edita el enlace de cada una.
+  destacadas:[
+    { cover:"J", label:"Historia",  url:"https://instagram.com/jairo_leon_vargas" },
+    { cover:"A", label:"Salud",     url:"https://instagram.com/jairo_leon_vargas" },
+    { cover:"I", label:"Agenda",    url:"https://instagram.com/jairo_leon_vargas" },
+    { cover:"R", label:"Comunidad", url:"https://instagram.com/jairo_leon_vargas" },
+    { cover:"O", label:"Bogotá",    url:"https://instagram.com/jairo_leon_vargas" },
+  ],
+
+  // Enlaces (botones). El de WhatsApp se genera aparte con el número de arriba.
+  enlaces:[
+    { emoji:"📅", titulo:"Agenda ciudadana",    sub:"Dónde estaré esta semana", url:"https://instagram.com/jairo_leon_vargas" },
+    { emoji:"🤝", titulo:"Súmate al equipo",     sub:"Sé parte del cambio",       url:"https://instagram.com/jairo_leon_vargas" },
+    { emoji:"📰", titulo:"Rendición de cuentas", sub:"Mi gestión, a la vista",    url:"https://instagram.com/jairo_leon_vargas" },
+  ],
+
+  prensa:{
+    mostrar:true,
+    comunicados:"https://instagram.com/jairo_leon_vargas",
+    fotografias:"https://instagram.com/jairo_leon_vargas",
+    kit:"https://instagram.com/jairo_leon_vargas",
+    contactoNombre:"",   // nombre de la jefa/e de prensa (ej: "María Pérez")
+    contactoNumero:""    // su número WhatsApp con 57 (ej: "573001234567")
+  },
+
+  focus:[
+    { emoji:"🏥", titulo:"Salud",               texto:"Salud digna y cercana: un derecho, no un privilegio.",   color:"var(--c4)" },
+    { emoji:"🗣", titulo:"Escuchar a la gente", texto:"Gobernar oyendo a los barrios. La ciudadanía al centro.", color:"var(--c2)" },
+    { emoji:"🐾", titulo:"Bienestar animal",    texto:"Una Bogotá que también cuida y protege a los animales.",  color:"var(--c1)" },
+    { emoji:"💼", titulo:"Empleo",              texto:"Trabajo digno y oportunidades reales para las familias.", color:"var(--c3)" },
+  ],
+
+  ubicacion:"Bogotá D.C., Colombia",
+  colores:{}
+};
+
+/* Imágenes embebidas (inyectadas) */
+const LOGO_JAIRO="__LOGO_JAIRO__";
+const LOGO_PACTO="__LOGO_PACTO__";
+const COVERS=__COVERS__;
+
+/* Íconos */
+const ICON={
+  instagram:`<svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor"/></svg>`,
+  tiktok:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.1 1.6 3.7 3.6 4v2.6c-1.3.1-2.6-.3-3.6-1v5.9c0 3.3-2.4 5.5-5.4 5.5-3 0-5.1-2.4-5.1-5.1 0-3 2.4-5 5.2-4.9v2.7c-.3-.1-.7-.2-1.1-.2-1.3 0-2.4 1-2.4 2.4 0 1.4 1 2.4 2.4 2.4 1.5 0 2.6-1.1 2.6-3V3h3.2z"/></svg>`,
+  youtube:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 12s0-3.2-.4-4.7c-.2-.9-.9-1.5-1.8-1.8C19.2 5 12 5 12 5s-7.2 0-8.8.5c-.9.3-1.6.9-1.8 1.8C1 8.8 1 12 1 12s0 3.2.4 4.7c.2.9.9 1.5 1.8 1.8C4.8 19 12 19 12 19s7.2 0 8.8-.5c.9-.3 1.6-.9 1.8-1.8.4-1.5.4-4.7.4-4.7zM9.8 15V9l5.2 3-5.2 3z"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.2 2.5h3.3l-7.2 8.2 8.5 11.3h-6.7l-5.2-6.8-6 6.8H1.6l7.7-8.8L1.1 2.5H8l4.7 6.2 5.5-6.2zm-1.2 17.6h1.8L7.1 4.3H5.2l11.8 15.8z"/></svg>`,
+  threads:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.4 2C6.9 2 3.7 5.3 3.5 10.9c-.1 3 .5 5.4 1.9 7.2 1.5 2 3.8 3 6.9 3.1h.1c2.5 0 4.3-.6 5.7-2 .9-.9 1.4-2.1 1.4-3.4 0-1.6-.7-2.9-2-3.7.1-2.1-.6-3.7-2.2-4.4-1.5-.7-3.4-.5-4.6.7l1.1 1.3c.8-.8 2-.9 2.9-.5.7.3 1.1 1 1.2 2-.7-.2-1.5-.3-2.3-.3-2.3.1-3.8 1.4-3.7 3.4.1 1.7 1.5 2.8 3.4 2.6 1.8-.1 3-1.2 3.4-3 .5.4.8 1 .8 1.8 0 .8-.3 1.5-.9 2-1 1-2.4 1.4-4.4 1.4-2.4 0-4.1-.7-5.2-2.2-1-1.4-1.5-3.4-1.4-5.9C6 5.4 8.4 3 12.4 3c2.4 0 4.2.8 5.4 2.3l1.4-1C17.7 2.9 15.5 2 12.4 2zm.4 12c-.9.1-1.6-.4-1.6-1 0-.6.6-1.1 1.7-1.2.7 0 1.3.1 1.9.3-.2 1.3-.9 1.8-2 1.9z"/></svg>`,
+  facebook:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>`,
+  whatsapp:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.4A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-2.9.8.8-2.8-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1-.2.2-.6.8-.8 1-.1.1-.3.2-.5 0-1.3-.6-2.1-1.1-3-2.6-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.8-1.9c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.7.3-.9.9-1 2.1-.3 3.5a9 9 0 0 0 3.6 3.5c1.9.9 2.3.7 2.7.7.6 0 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1 0-.1-.2-.2-.4-.3z"/></svg>`,
+  arrow:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  chevron:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  share:`<svg viewBox="0 0 24 24" fill="none"><path d="M18 8a3 3 0 1 0-2.8-4M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2.6-4.3l6.8-3.4m-6.8 6l6.8 3.4M18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  pin:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg>`,
+  gear:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 13H4a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5.3 6L5.2 6a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 11 2.6V2a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 18 3.8l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.6"/></svg>`,
+};
+
+/* Utilidades */
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mReduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const clone=o=>{ try{return structuredClone(o);}catch(e){return JSON.parse(JSON.stringify(o));} };
+async function fileToDataURL(file, maxW=1000, q=0.82){
+  const draw=(src,w,h)=>{ const s=Math.min(1,maxW/w); const cv=document.createElement('canvas'); cv.width=Math.round(w*s); cv.height=Math.round(h*s); cv.getContext('2d').drawImage(src,0,0,cv.width,cv.height); return cv.toDataURL('image/jpeg',q); };
+  if(window.createImageBitmap){
+    try{ const b=await createImageBitmap(file,{imageOrientation:'from-image'}); return draw(b,b.width,b.height); }
+    catch(e){ try{ const b=await createImageBitmap(file); return draw(b,b.width,b.height); }catch(e2){} }
+  }
+  return await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>{ const im=new Image(); im.onload=()=>res(draw(im,im.width,im.height)); im.onerror=rej; im.src=fr.result; }; fr.onerror=rej; fr.readAsDataURL(file); });
+}
+function deepMerge(base,extra){
+  const out=clone(base);
+  for(const k in extra){
+    if(extra[k]&&typeof extra[k]==='object'&&!Array.isArray(extra[k])&&typeof out[k]==='object'&&!Array.isArray(out[k]))
+      out[k]=deepMerge(out[k],extra[k]);
+    else out[k]=clone(extra[k]);
+  }
+  return out;
+}
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+
+/* ── Supabase ────────────────────────────────────────────────── */
+let supa=null;
+function initSupa(){ try{ if(SUPA_URL&&SUPA_KEY&&window.supabase) supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){ supa=null; } }
+async function loadConfig(){
+  let cfg=clone(DEFAULTS);
+  if(supa){ try{
+    const { data, error }=await supa.from('linktree_config').select('data').eq('id',1).maybeSingle();
+    if(!error && data && data.data) cfg=deepMerge(cfg, data.data);
+  }catch(e){} }
+  return cfg;
+}
+async function saveConfig(cfg){
+  if(!supa) throw new Error('sin-conexion');
+  const { error }=await supa.from('linktree_config').upsert({ id:1, data:cfg, updated_at:new Date().toISOString() });
+  if(error) throw error;
+}
+async function getUser(){ if(!supa) return null; try{ const {data}=await supa.auth.getUser(); return data.user; }catch(e){ return null; } }
+
+/* ─────────────────────────────────────────────────────────────────
+   RENDER de la página pública
+   ───────────────────────────────────────────────────────────────── */
+let STATE=clone(DEFAULTS);
+
+function waLink(num){ const n=(num||'').replace(/\D/g,''); return `https://wa.me/${n}?text=${encodeURIComponent('Hola Jairo, quiero contactar tu equipo.')}`; }
+
+function render(cfg){
+  STATE=cfg;
+  if(cfg.colores) for(const [k,v] of Object.entries(cfg.colores)) if(v) document.documentElement.style.setProperty('--'+k,v);
+
+  let d=40; const step=()=>{ const v=d; d+=60; return v; };
+
+  const avatarHTML = cfg.fotoUrl ? `<div class="avatar-shell reveal" style="animation-delay:${step()}ms"><div class="avatar"><div class="ring"></div><div class="photo"><img src="${esc(cfg.fotoUrl)}" alt="${esc(cfg.nombre)}"></div></div></div>` : '';
+
+  const ORDER=['instagram','tiktok','youtube','x','threads','facebook'];
+  const socialsHTML = ORDER.filter(t=>cfg.redes[t]).map(t=>
+    `<a href="${esc(cfg.redes[t])}" target="_blank" rel="noopener" aria-label="${t}">${ICON[t]}</a>`).join('');
+
+  const destHTML = cfg.destacadas.map(x=>
+    `<a class="dest" href="${esc(x.url)}" target="_blank" rel="noopener">
+       <span class="circle"><img src="${COVERS[x.cover]}" alt="${esc(x.label)}"></span>
+       <span class="dlabel">${esc(x.label)}</span></a>`).join('');
+
+  // enlaces: WhatsApp primero (si hay número) + enlaces con url
+  let linksHTML='';
+  const waHref=waLink(cfg.whatsapp);
+  if((cfg.whatsapp||'').trim()){
+    linksHTML += `<a class="link wa" href="${esc(waHref)}" target="_blank" rel="noopener" style="animation-delay:${step()}ms">
+      <span class="ic">${ICON.whatsapp}</span>
+      <span class="tx"><span class="tt">Escríbeme por WhatsApp</span><span class="sub">Hablemos directo, sin intermediarios</span></span>
+      <span class="arrow">${ICON.arrow}</span></a>`;
+  }
+  linksHTML += cfg.enlaces.filter(l=>l.url).map(l=>
+    `<a class="link" href="${esc(l.url)}" target="_blank" rel="noopener" style="animation-delay:${step()}ms">
+       <span class="ic">${l.emoji||'🔗'}</span>
+       <span class="tx"><span class="tt">${esc(l.titulo)}</span><span class="sub">${esc(l.sub||'')}</span></span>
+       <span class="arrow">${ICON.arrow}</span></a>`).join('');
+
+  const focusHTML = cfg.focus.map(f=>
+    `<div class="fcard" style="--accent:${f.color}"><span class="fic">${f.emoji}</span>
+       <div><div class="ft">${esc(f.titulo)}</div><div class="fx">${esc(f.texto)}</div></div></div>`).join('');
+
+  // Prensa y comunicaciones
+  let pressHTML='';
+  if(cfg.prensa && cfg.prensa.mostrar){
+    const P=cfg.prensa, items=[];
+    const row=(emoji,label,href)=>`<a class="press-item" href="${esc(href)}" target="_blank" rel="noopener"><span class="pi-ic">${emoji}</span><span class="pi-t">${label}</span><span class="pi-ar">${ICON.arrow}</span></a>`;
+    if(P.comunicados) items.push(row('📄','Comunicados',P.comunicados));
+    if(P.fotografias) items.push(row('📸','Fotografías oficiales',P.fotografias));
+    if(P.kit)         items.push(row('🎞️','Kit de prensa',P.kit));
+    if(P.contactoNombre){
+      const num=(P.contactoNumero||'').replace(/\D/g,'');
+      const sub=`${esc(P.contactoNombre)}${P.contactoNumero?` · ${esc(P.contactoNumero)}`:''}`;
+      const inner=`<span class="pi-ic">📞</span><span class="pi-t"><b>Contacto para medios</b><br><span class="pi-sub">${sub}</span></span>`;
+      items.push(num
+        ? `<a class="press-item" href="https://wa.me/${num}?text=${encodeURIComponent('Hola, escribo desde medios y quiero contactar al equipo de Jairo León Vargas.')}" target="_blank" rel="noopener">${inner}<span class="pi-ar">${ICON.whatsapp}</span></a>`
+        : `<div class="press-item">${inner}</div>`);
+    }
+    if(items.length){
+      pressHTML=`<div class="press reveal" style="animation-delay:${step()}ms">
+        <button class="press-head" aria-expanded="false"><span class="ph-ic">🗞️</span><span class="ph-t">Prensa y comunicaciones</span><span class="ph-chev">${ICON.chevron}</span></button>
+        <div class="press-body">${items.join('')}</div></div>`;
+    }
+  }
+
+  let ballotHTML='', countdownHTML='';
+  if(cfg.campana.activa){
+    ballotHTML=`<div class="ballot reveal" style="animation-delay:${step()}ms">
+      <span class="ballot-label">Tu voto</span>
+      <button class="casilla" id="casilla" aria-label="Marca el número ${esc(cfg.campana.numero)}">
+        <span class="num">${esc(cfg.campana.numero)}</span>
+        <svg class="x" viewBox="0 0 150 150" aria-hidden="true"><line x1="30" y1="30" x2="120" y2="120"/><line x1="120" y1="30" x2="30" y2="120"/></svg>
+      </button>
+      <span class="ballot-hint">Marca el <b>${esc(cfg.campana.numero)}</b> — toca la casilla</span></div>`;
+    if(cfg.campana.fechaEleccion){
+      countdownHTML=`<section class="countdown reveal" id="countdown" style="animation-delay:${step()}ms" hidden>
+        <div class="cd-top">Faltan para marcar el <b>${esc(cfg.campana.numero)}</b></div><div class="cd-grid" id="cd-grid"></div></section>`;
+    }
+  }
+
+  $('#app').innerHTML=`
+    <p class="eyebrow reveal" style="animation-delay:${step()}ms">${esc(cfg.eyebrow)}</p>
+    ${avatarHTML}
+    <img class="hero-logo reveal" src="${LOGO_JAIRO}" alt="${esc(cfg.nombre)}" style="animation-delay:${step()}ms">
+    <p class="role reveal" style="animation-delay:${step()}ms">${esc(cfg.cargo)} <span class="yrs">· ${esc(cfg.periodo)}</span></p>
+    <p class="bio reveal" style="animation-delay:${step()}ms">${esc(cfg.bio)}</p>
+    <div class="chips reveal" style="animation-delay:${step()}ms">${cfg.trayectoria.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+    ${cfg.fotoDestacada ? `<div class="featured reveal" style="animation-delay:${step()}ms"><img src="${esc(cfg.fotoDestacada)}" alt="${esc(cfg.nombre)}" loading="lazy"></div>` : ''}
+    <nav class="socials reveal" style="animation-delay:${step()}ms" aria-label="Redes sociales">${socialsHTML}</nav>
+    ${ballotHTML}${countdownHTML}
+    <div class="dest-wrap reveal" style="animation-delay:${step()}ms"><div class="destacadas">${destHTML}</div></div>
+    <h2 class="section-h reveal" style="animation-delay:${step()}ms">Enlaces</h2>
+    <div class="links">${linksHTML}</div>
+    ${pressHTML}
+    <h2 class="section-h reveal" id="focus" style="animation-delay:${step()}ms">En qué trabajo</h2>
+    <div class="focus reveal" style="animation-delay:${step()}ms">${focusHTML}</div>
+    <button class="share reveal" id="share" style="animation-delay:${step()}ms">${ICON.share} Compartir esta página</button>
+    <div class="coalicion reveal" style="animation-delay:${step()}ms"><img src="${LOGO_PACTO}" alt="Pacto Histórico"><span>Coalición Pacto Histórico</span></div>
+    <footer class="foot reveal" style="animation-delay:${step()}ms">
+      <span class="place">${ICON.pin} ${esc(cfg.ubicacion)}</span><br>
+      <button class="gear" id="gearBtn" aria-label="Administrar" title="Administrar">${ICON.gear}</button>
+    </footer>`;
+
+  wireInteractions(cfg);
+}
+
+function wireInteractions(cfg){
+  // casilla + confeti + contador
+  const casilla=$('#casilla');
+  if(casilla){
+    const CONF=['#a73194','#7a2e7e','#c94fb4','#f2a03d','#ffffff'];
+    const confetti=(a)=>{ const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+      for(let i=0;i<64;i++){ const p=document.createElement('span'); p.className='confetti-piece';
+        const s=6+Math.random()*7; p.style.width=s+'px'; p.style.height=(s*.5)+'px'; p.style.left=cx+'px'; p.style.top=cy+'px';
+        p.style.background=CONF[i%CONF.length]; p.style.borderRadius=Math.random()>.5?'2px':'50%'; document.body.appendChild(p);
+        const an=Math.random()*Math.PI*2,v=90+Math.random()*150,dx=Math.cos(an)*v,dy=Math.sin(an)*v-60,rot=Math.random()*720-360;
+        p.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${dx}px,${dy+220}px) rotate(${rot}deg)`,opacity:0}],
+          {duration:900+Math.random()*500,easing:'cubic-bezier(.2,.6,.3,1)'}).onfinish=()=>p.remove(); } };
+    const marcar=(c=true)=>{ casilla.classList.remove('marked'); void casilla.offsetWidth; casilla.classList.add('marked'); if(c&&!mReduce) confetti(casilla); };
+    casilla.addEventListener('click',()=>marcar(true)); setTimeout(()=>marcar(false),900);
+    if(cfg.campana.fechaEleccion){
+      const cd=$('#countdown'),grid=$('#cd-grid'),target=new Date(cfg.campana.fechaEleccion).getTime();
+      const units=[['Días',86400000],['Horas',3600000],['Min',60000],['Seg',1000]];
+      const tick=()=>{ let diff=target-Date.now();
+        if(diff<=0&&diff>-86400000){ grid.innerHTML=`<div class="cd-day" style="grid-column:1/-1">🗳️ ¡Hoy marcamos el ${esc(cfg.campana.numero)}!</div>`; cd.hidden=false; clearInterval(cd._i); return; }
+        if(diff<=0){ cd.hidden=true; clearInterval(cd._i); return; }
+        cd.hidden=false; grid.innerHTML=units.map(([l,ms])=>{ const val=Math.floor(diff/ms); diff-=val*ms; return `<div class="cd-cell"><div class="n">${String(val).padStart(2,'0')}</div><div class="l">${l}</div></div>`; }).join('');
+      }; tick(); cd._i=setInterval(tick,1000);
+    }
+  }
+  // ripple
+  document.querySelectorAll('.link').forEach(el=>{
+    el.addEventListener('pointerdown',e=>{ const r=el.getBoundingClientRect(),rp=document.createElement('span'); rp.className='ripple';
+      const size=Math.max(r.width,r.height); rp.style.width=rp.style.height=size+'px'; rp.style.left=(e.clientX-r.left-size/2)+'px'; rp.style.top=(e.clientY-r.top-size/2)+'px';
+      el.appendChild(rp); setTimeout(()=>rp.remove(),560); });
+  });
+  // acordeón de prensa
+  const ph=$('.press-head');
+  if(ph) ph.addEventListener('click',()=>{ const pr=ph.closest('.press'); const body=pr.querySelector('.press-body'); const open=pr.classList.toggle('open'); ph.setAttribute('aria-expanded',open); body.style.maxHeight=open?body.scrollHeight+'px':'0'; });
+  // compartir
+  $('#share').addEventListener('click',async()=>{ const data={title:`${STATE.nombre} — ${STATE.cargo}`,text:`Conoce a ${STATE.nombre}:`,url:location.href};
+    try{ if(navigator.share){await navigator.share(data);} else{ await navigator.clipboard.writeText(location.href); toast('¡Enlace copiado!'); } }catch(e){} });
+  // engranaje admin
+  const g=$('#gearBtn'); if(g) g.addEventListener('click',openAdmin);
+  // spotlight
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches && !mReduce){ const sp=$('#spotlight');
+    window.onpointermove=e=>{ sp.style.opacity='1'; sp.style.left=e.clientX+'px'; sp.style.top=e.clientY+'px'; }; window.onpointerleave=()=>sp.style.opacity='0'; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PANEL DE ADMINISTRACIÓN
+   ───────────────────────────────────────────────────────────────── */
+async function openAdmin(){
+  const ov=$('#admOverlay'); ov.classList.add('open');
+  const user = await getUser();
+  if(!supa){ renderAdminEditor(true); }        // sin Supabase: modo local (vista previa / descargar)
+  else if(!user){ renderLogin(); }             // con Supabase pero sin sesión: login
+  else { renderAdminEditor(false); }           // autenticado: editor completo con guardado en la nube
+}
+function closeAdmin(){ $('#admOverlay').classList.remove('open'); if(location.hash==='#admin') history.replaceState(null,'',location.pathname+location.search); }
+
+function renderLogin(){
+  $('#admPanel').innerHTML=`
+    <div class="adm-login">
+      <h2>Panel privado</h2>
+      <p>Ingresa con tu cuenta de administrador.</p>
+      <div class="adm-field"><input class="adm-input" id="admEmail" type="email" placeholder="correo" autocomplete="username"></div>
+      <div class="adm-field"><input class="adm-input" id="admPw" type="password" placeholder="contraseña" autocomplete="current-password"></div>
+      <div class="adm-err" id="admErr"></div>
+      <div class="adm-actions">
+        <button class="adm-btn primary" id="admLoginBtn">Entrar</button>
+        <button class="adm-btn ghost" id="admCancel">Cerrar</button>
+      </div>
+    </div>`;
+  $('#admCancel').onclick=closeAdmin;
+  $('#admLoginBtn').onclick=async()=>{
+    const email=$('#admEmail').value.trim(), pw=$('#admPw').value;
+    const btn=$('#admLoginBtn'); btn.disabled=true; btn.textContent='Entrando…'; $('#admErr').textContent='';
+    try{ const {error}=await supa.auth.signInWithPassword({email,password:pw}); if(error) throw error; renderAdminEditor(false); }
+    catch(e){ $('#admErr').textContent='No pudimos entrar. Revisa el correo y la contraseña.'; btn.disabled=false; btn.textContent='Entrar'; }
+  };
+  $('#admPw').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#admLoginBtn').click(); });
+}
+
+function renderAdminEditor(localMode){
+  const c=clone(STATE);
+  const netRow=(k,label,ph)=>`<div class="adm-field"><label>${label}</label><input class="adm-input" data-net="${k}" value="${esc(c.redes[k]||'')}" placeholder="${ph}"></div>`;
+  const destRow=(x,i)=>`<div class="adm-field"><label>${esc(x.label)}</label><input class="adm-input" data-dest="${i}" value="${esc(x.url||'')}" placeholder="https://…"></div>`;
+
+  $('#admPanel').innerHTML=`
+    <div class="adm-head"><h2>Editar página</h2><button class="adm-x" id="admClose">✕</button></div>
+    <p class="adm-sub">${localMode?'Modo local: puedes previsualizar y descargar la configuración. Para publicar los cambios a todos, conecta Supabase.':'Cambia lo que quieras y guarda. Se actualiza al instante para todos.'}</p>
+
+    <div class="adm-sec"><h3>🗳️ Modo campaña</h3>
+      <div class="adm-field"><div class="adm-switch"><input type="checkbox" id="admActiva" ${c.campana.activa?'checked':''}><label style="margin:0">Mostrar número de tarjetón</label></div></div>
+      <div class="adm-row2">
+        <div class="adm-field"><label>Número</label><input class="adm-input" id="admNumero" value="${esc(c.campana.numero)}" placeholder="29"></div>
+        <div class="adm-field"><label>Fecha elección (opcional)</label><input class="adm-input" id="admFecha" type="datetime-local" value="${esc(c.campana.fechaEleccion)}"></div>
+      </div>
+    </div>
+
+    <div class="adm-sec"><h3>💬 WhatsApp</h3>
+      <div class="adm-field"><label>Número (con 57, solo dígitos)</label><input class="adm-input" id="admWa" value="${esc(c.whatsapp)}" placeholder="573001234567"></div>
+    </div>
+
+    <div class="adm-sec"><h3>🌐 Redes sociales</h3>
+      ${netRow('instagram','Instagram','https://instagram.com/…')}
+      ${netRow('tiktok','TikTok','https://tiktok.com/@…')}
+      ${netRow('youtube','YouTube','https://youtube.com/@…')}
+      ${netRow('x','X','https://x.com/…')}
+      ${netRow('threads','Threads','https://threads.net/@…')}
+      ${netRow('facebook','Facebook','https://facebook.com/…')}
+    </div>
+
+    <div class="adm-sec"><h3>⭐ Destacadas (J·A·I·R·O)</h3>
+      ${c.destacadas.map(destRow).join('')}
+    </div>
+
+    <div class="adm-sec"><h3>🔗 Enlaces</h3>
+      <div id="admEnlaces"></div>
+      <button class="adm-add" id="admAddEnl">＋ Agregar enlace</button>
+    </div>
+
+    <div class="adm-sec"><h3>🗞️ Prensa y comunicaciones</h3>
+      <div class="adm-field"><div class="adm-switch"><input type="checkbox" id="admPrMostrar" ${c.prensa&&c.prensa.mostrar?'checked':''}><label style="margin:0">Mostrar sección de prensa</label></div></div>
+      <div class="adm-field"><label>Comunicados (enlace)</label><input class="adm-input" id="admPrCom" value="${esc(c.prensa?c.prensa.comunicados:'')}" placeholder="https://…"></div>
+      <div class="adm-field"><label>Fotografías oficiales (enlace)</label><input class="adm-input" id="admPrFoto" value="${esc(c.prensa?c.prensa.fotografias:'')}" placeholder="https://…"></div>
+      <div class="adm-field"><label>Kit de prensa (enlace)</label><input class="adm-input" id="admPrKit" value="${esc(c.prensa?c.prensa.kit:'')}" placeholder="https://…"></div>
+      <div class="adm-field"><label>Jefa/e de prensa — nombre</label><input class="adm-input" id="admPrNom" value="${esc(c.prensa?c.prensa.contactoNombre:'')}" placeholder="Nombre y apellido"></div>
+      <div class="adm-field"><label>Jefa/e de prensa — número (WhatsApp, con 57)</label><input class="adm-input" id="admPrNum" value="${esc(c.prensa?c.prensa.contactoNumero:'')}" placeholder="573001234567"></div>
+    </div>
+
+    <div class="adm-sec"><h3>✍️ Textos</h3>
+      <div class="adm-field"><label>Frase (bio)</label><input class="adm-input" id="admBio" value="${esc(c.bio)}"></div>
+      <div class="adm-row2">
+        <div class="adm-field"><label>Cargo</label><input class="adm-input" id="admCargo" value="${esc(c.cargo)}"></div>
+        <div class="adm-field"><label>Periodo</label><input class="adm-input" id="admPeriodo" value="${esc(c.periodo)}"></div>
+      </div>
+    </div>
+
+    <div class="adm-sec"><h3>🖼️ Fotos (opcional)</h3>
+      <div class="adm-field"><label>Foto destacada — aparece en el medio de la página</label>
+        <div class="adm-photo-prev" id="prev-fotoDestacada"></div>
+        <div class="adm-photo-btns">
+          <label class="adm-upl">Subir imagen<input type="file" accept="image/*" hidden id="file-fotoDestacada"></label>
+          <button type="button" class="adm-upl del" id="rm-fotoDestacada">Quitar</button>
+        </div>
+        <input class="adm-input" id="url-fotoDestacada" placeholder="o pega una URL de imagen">
+      </div>
+      <div class="adm-field" style="margin-top:12px"><label>Foto de perfil — círculo pequeño arriba del logo</label>
+        <div class="adm-photo-prev" id="prev-fotoUrl"></div>
+        <div class="adm-photo-btns">
+          <label class="adm-upl">Subir imagen<input type="file" accept="image/*" hidden id="file-fotoUrl"></label>
+          <button type="button" class="adm-upl del" id="rm-fotoUrl">Quitar</button>
+        </div>
+        <input class="adm-input" id="url-fotoUrl" placeholder="o pega una URL de imagen">
+      </div>
+    </div>
+
+    <div class="adm-actions">
+      ${localMode?'':'<button class="adm-btn primary" id="admSave">Guardar y publicar</button>'}
+      <button class="adm-btn ghost" id="admPreview">Vista previa</button>
+      <button class="adm-btn ghost" id="admDownload">Descargar configuración (JSON)</button>
+      ${localMode?'':'<button class="adm-btn ghost" id="admLogout">Cerrar sesión</button>'}
+    </div>
+    ${localMode?'<p class="adm-note">Sin conexión a la nube. Los cambios que guardes con “Vista previa” se ven solo en este dispositivo hasta que recargues.</p>':''}`;
+
+  // poblar enlaces
+  const enlBox=$('#admEnlaces');
+  const addEnl=(e={emoji:'🔗',titulo:'',sub:'',url:''})=>{
+    const div=document.createElement('div'); div.className='adm-enl';
+    div.innerHTML=`
+      <div class="adm-enl-top">
+        <input class="adm-input emoji" value="${esc(e.emoji||'')}" placeholder="🔗" maxlength="4">
+        <input class="adm-input tit" value="${esc(e.titulo||'')}" placeholder="Título">
+      </div>
+      <div class="adm-field"><input class="adm-input sub" value="${esc(e.sub||'')}" placeholder="Descripción corta"></div>
+      <div class="adm-field"><input class="adm-input url" value="${esc(e.url||'')}" placeholder="https://…"></div>
+      <div class="adm-enl-actions">
+        <button class="adm-mini up" title="Subir">↑</button>
+        <button class="adm-mini down" title="Bajar">↓</button>
+        <button class="adm-mini del" title="Borrar">🗑</button>
+      </div>`;
+    div.querySelector('.up').onclick=()=>{ if(div.previousElementSibling) enlBox.insertBefore(div,div.previousElementSibling); };
+    div.querySelector('.down').onclick=()=>{ if(div.nextElementSibling) enlBox.insertBefore(div.nextElementSibling,div); };
+    div.querySelector('.del').onclick=()=>div.remove();
+    enlBox.appendChild(div);
+  };
+  c.enlaces.forEach(addEnl);
+  $('#admAddEnl').onclick=()=>addEnl();
+
+  // fotos: subir archivo / pegar URL / quitar
+  const admPhotos={ fotoDestacada:c.fotoDestacada||'', fotoUrl:c.fotoUrl||'' };
+  function setupPhoto(key){
+    const prev=$('#prev-'+key), url=$('#url-'+key), file=$('#file-'+key), rm=$('#rm-'+key);
+    const paint=()=>{ prev.innerHTML = admPhotos[key] ? `<img src="${admPhotos[key]}" alt="">` : 'Sin imagen'; };
+    url.value = (admPhotos[key]||'').startsWith('http') ? admPhotos[key] : '';
+    paint();
+    file.addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f) return;
+      try{ admPhotos[key]=await fileToDataURL(f); url.value=''; paint(); toast('Imagen cargada'); }
+      catch(err){ toast('No se pudo cargar la imagen'); } });
+    url.addEventListener('input', ()=>{ admPhotos[key]=url.value.trim(); paint(); });
+    rm.addEventListener('click', ()=>{ admPhotos[key]=''; url.value=''; file.value=''; paint(); });
+  }
+  setupPhoto('fotoDestacada'); setupPhoto('fotoUrl');
+
+  // recolectar formulario → cfg
+  const collect=()=>{
+    const out=clone(STATE);
+    out.campana.activa=$('#admActiva').checked;
+    out.campana.numero=$('#admNumero').value.trim()||'00';
+    out.campana.fechaEleccion=$('#admFecha').value||'';
+    out.whatsapp=$('#admWa').value.trim();
+    document.querySelectorAll('[data-net]').forEach(i=>{ out.redes[i.dataset.net]=i.value.trim(); });
+    document.querySelectorAll('[data-dest]').forEach(i=>{ out.destacadas[+i.dataset.dest].url=i.value.trim(); });
+    out.enlaces=[...enlBox.children].map(div=>({
+      emoji:div.querySelector('.emoji').value.trim()||'🔗',
+      titulo:div.querySelector('.tit').value.trim(),
+      sub:div.querySelector('.sub').value.trim(),
+      url:div.querySelector('.url').value.trim()
+    }));
+    out.bio=$('#admBio').value.trim();
+    out.cargo=$('#admCargo').value.trim();
+    out.periodo=$('#admPeriodo').value.trim();
+    out.fotoDestacada=admPhotos.fotoDestacada;
+    out.fotoUrl=admPhotos.fotoUrl;
+    out.prensa={ mostrar:$('#admPrMostrar').checked, comunicados:$('#admPrCom').value.trim(), fotografias:$('#admPrFoto').value.trim(), kit:$('#admPrKit').value.trim(), contactoNombre:$('#admPrNom').value.trim(), contactoNumero:$('#admPrNum').value.trim() };
+    return out;
+  };
+
+  $('#admClose').onclick=closeAdmin;
+  $('#admPreview').onclick=()=>{ render(collect()); toast('Vista previa aplicada'); };
+  $('#admDownload').onclick=()=>{ const blob=new Blob([JSON.stringify(collect(),null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config-linktree.json'; a.click(); URL.revokeObjectURL(a.href); };
+  const save=$('#admSave'); if(save) save.onclick=async()=>{ save.disabled=true; save.textContent='Guardando…';
+    try{ const cfg=collect(); await saveConfig(cfg); render(cfg); closeAdmin(); toast('✅ Cambios publicados'); }
+    catch(e){ toast('No se pudo guardar. Revisa tu conexión.'); save.disabled=false; save.textContent='Guardar y publicar'; } };
+  const lo=$('#admLogout'); if(lo) lo.onclick=async()=>{ try{ await supa.auth.signOut(); }catch(e){} closeAdmin(); toast('Sesión cerrada'); };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   INICIO
+   ───────────────────────────────────────────────────────────────── */
+(async()=>{
+  initSupa();
+  const cfg=await loadConfig();
+  render(cfg);
+  if(location.hash==='#admin') openAdmin();
+  window.addEventListener('hashchange',()=>{ if(location.hash==='#admin') openAdmin(); });
+})();
+</script>
+</body>
+</html>

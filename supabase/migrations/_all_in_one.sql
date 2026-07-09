@@ -2424,3 +2424,626 @@ drop trigger if exists trg_user_locations_history on public.user_locations;
 create trigger trg_user_locations_history
   after insert or update on public.user_locations
   for each row execute function public.append_location_history();
+
+-- ===== 0020_zone_type_departamento.sql =====
+-- ============================================================================
+-- UTL 360 · 0020_zone_type_departamento.sql
+-- Agrega el nivel 'departamento' al enum zone_type (mapa de Colombia).
+-- Debe ir en su propio archivo: ADD VALUE no puede usarse en la misma
+-- transacción donde se consume. Ejecuta ANTES de 0021.
+-- ============================================================================
+alter type zone_type add value if not exists 'departamento';
+
+-- ===== 0021_territorio.sql =====
+-- ============================================================================
+-- UTL 360 · 0021_territorio.sql
+-- Soporte del mapa de territorio enlazado al Kanban:
+--   · zones.codigo_geo: código del polígono (GeoJSON) para emparejar el mapa.
+--   · ensure_zone(): busca o crea una zona por nombre+tipo (security definer),
+--     para que cualquier staff pueda asociar tareas a un área desde el mapa.
+-- Ejecuta DESPUÉS de 0020. Idempotente.
+-- ============================================================================
+
+alter table public.zones
+  add column if not exists codigo_geo text;
+
+-- Busca o crea una zona y devuelve su id. SECURITY DEFINER: permite que
+-- cualquier miembro del staff vincule tareas a un área aunque la creación de
+-- zonas esté restringida a coordinación.
+create or replace function public.ensure_zone(
+  p_nombre text,
+  p_tipo   zone_type default 'localidad',
+  p_codigo text default null
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  zid uuid;
+begin
+  if not public.is_staff() then
+    raise exception 'No autorizado';
+  end if;
+
+  select id into zid
+  from public.zones
+  where lower(nombre_zona) = lower(p_nombre)
+    and tipo_zona = p_tipo
+    and deleted_at is null
+  limit 1;
+
+  if zid is null then
+    insert into public.zones (nombre_zona, tipo_zona, codigo_geo, created_by)
+    values (p_nombre, p_tipo, p_codigo, auth.uid())
+    returning id into zid;
+  elsif p_codigo is not null then
+    update public.zones set codigo_geo = coalesce(codigo_geo, p_codigo) where id = zid;
+  end if;
+
+  return zid;
+end $$;
+
+revoke all on function public.ensure_zone(text, zone_type, text) from public, anon;
+grant execute on function public.ensure_zone(text, zone_type, text) to authenticated;
+
+-- ===== 0022_monitoreo.sql =====
+-- ============================================================================
+-- UTL 360 · 0022_monitoreo.sql
+-- Submódulo de Comunicaciones: monitoreo de personas (inteligencia mediática).
+--   · monitor_persons: personas fichadas (relación, cargo, redes, palabras clave).
+--   · monitor_items: noticias / menciones / publicaciones recolectadas.
+--   · monitor_runs: bitácora de cada recolección (auditoría).
+-- Recolección real: noticias vía RSS de Google News (gratis) + X/otras redes por
+-- clave (opcional). Análisis con la IA ya configurada.
+-- Ejecuta DESPUÉS de 0021. Idempotente.
+-- ============================================================================
+
+do $$ begin
+  create type monitor_relacion as enum ('propio','aliado','contraposicion','neutral','objetivo');
+exception when duplicate_object then null; end $$;
+
+-- ─────────────── Personas monitoreadas ───────────────
+create table if not exists public.monitor_persons (
+  id            uuid primary key default gen_random_uuid(),
+  nombre        text not null,
+  alias         text[] not null default '{}',
+  relacion      monitor_relacion not null default 'objetivo',
+  cargo         text,
+  partido       text,
+  foto_url      text,
+  etiquetas     text[] not null default '{}',
+  handles       jsonb not null default '{}'::jsonb,   -- {x, facebook, instagram, tiktok, youtube}
+  keywords      text[] not null default '{}',         -- términos de búsqueda
+  notas         text,
+  ultimo_analisis text,                               -- brief generado por IA
+  analisis_at   timestamptz,
+  ultima_recoleccion timestamptz,
+  activo        boolean not null default true,
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  deleted_at    timestamptz
+);
+create index if not exists idx_monitor_persons_relacion on public.monitor_persons(relacion);
+
+-- ─────────────── Items recolectados ───────────────
+create table if not exists public.monitor_items (
+  id           uuid primary key default gen_random_uuid(),
+  person_id    uuid not null references public.monitor_persons(id) on delete cascade,
+  fuente       text not null default 'noticia',  -- noticia|x|facebook|instagram|tiktok|youtube|web|manual
+  tipo         text not null default 'mencion',  -- noticia|post|mencion|video
+  titulo       text,
+  contenido    text,
+  url          text,
+  autor        text,
+  autor_handle text,
+  sentimiento  text,                             -- positivo|negativo|neutral (opcional)
+  relevancia   int not null default 0,
+  published_at timestamptz,
+  fetched_at   timestamptz not null default now(),
+  created_by   uuid references auth.users(id) on delete set null
+);
+create index if not exists idx_monitor_items_person on public.monitor_items(person_id, published_at desc);
+create index if not exists idx_monitor_items_fuente on public.monitor_items(fuente);
+
+-- ─────────────── Bitácora de recolecciones ───────────────
+create table if not exists public.monitor_runs (
+  id         uuid primary key default gen_random_uuid(),
+  person_id  uuid not null references public.monitor_persons(id) on delete cascade,
+  fuentes    text[] not null default '{}',
+  total      int not null default 0,
+  resultado  jsonb not null default '{}'::jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_monitor_runs_person on public.monitor_runs(person_id, created_at desc);
+
+-- ─────────────── ¿Quién gestiona el monitoreo? ───────────────
+create or replace function public.can_manage_monitoreo()
+returns boolean language sql stable security definer set search_path = public as $$
+  select
+    public.is_admin()
+    or public.has_role('direccion_general'::app_role)
+    or public.has_role('coordinador_utl'::app_role)
+    or public.has_role('comunicaciones'::app_role);
+$$;
+
+-- ─────────────── RLS ───────────────
+alter table public.monitor_persons enable row level security;
+alter table public.monitor_persons force row level security;
+alter table public.monitor_items   enable row level security;
+alter table public.monitor_items   force row level security;
+alter table public.monitor_runs    enable row level security;
+alter table public.monitor_runs    force row level security;
+
+drop policy if exists monitor_persons_read on public.monitor_persons;
+create policy monitor_persons_read on public.monitor_persons for select to authenticated
+  using (public.is_staff() and deleted_at is null);
+drop policy if exists monitor_persons_write on public.monitor_persons;
+create policy monitor_persons_write on public.monitor_persons for all to authenticated
+  using (public.can_manage_monitoreo()) with check (public.can_manage_monitoreo());
+
+drop policy if exists monitor_items_read on public.monitor_items;
+create policy monitor_items_read on public.monitor_items for select to authenticated
+  using (public.is_staff());
+drop policy if exists monitor_items_write on public.monitor_items;
+create policy monitor_items_write on public.monitor_items for all to authenticated
+  using (public.can_manage_monitoreo()) with check (public.can_manage_monitoreo());
+
+drop policy if exists monitor_runs_read on public.monitor_runs;
+create policy monitor_runs_read on public.monitor_runs for select to authenticated
+  using (public.is_staff());
+drop policy if exists monitor_runs_write on public.monitor_runs;
+create policy monitor_runs_write on public.monitor_runs for all to authenticated
+  using (public.can_manage_monitoreo()) with check (public.can_manage_monitoreo());
+
+-- ─────────────── Triggers updated_at + auditoría ───────────────
+drop trigger if exists trg_monitor_persons_updated on public.monitor_persons;
+create trigger trg_monitor_persons_updated before update on public.monitor_persons
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_monitor_persons_audit on public.monitor_persons;
+create trigger trg_monitor_persons_audit
+  after insert or update or delete on public.monitor_persons
+  for each row execute function public.log_audit_event();
+
+-- ─────────────── Seed: Jairo León Vargas (primera ficha) ───────────────
+insert into public.monitor_persons (nombre, relacion, cargo, partido, keywords, handles, notas)
+select
+  'Jairo León Vargas', 'propio',
+  'Candidato a Cámara por Bogotá D.C.', 'Pacto Histórico',
+  array['Jairo León Vargas','Jairo Leon Vargas'],
+  jsonb_build_object('x','','facebook','','instagram','','tiktok','','youtube',''),
+  'Figura propia. Monitoreo de reputación, menciones y narrativa en medios y redes.'
+where not exists (
+  select 1 from public.monitor_persons where lower(nombre) = lower('Jairo León Vargas') and deleted_at is null
+);
+
+-- ===== 0023_conexiones.sql =====
+-- ============================================================================
+-- UTL 360 · 0023_conexiones.sql
+-- Conexiones de redes/fuentes para el monitoreo (X, NewsAPI, YouTube, Meta…).
+-- Los SECRETOS (tokens/keys) se guardan en app_secrets (solo service role, key
+-- 'conexion:<proveedor>'). El ESTADO público (conectado/probado) va en settings
+-- key 'conexiones' para poder mostrarlo en la UI sin exponer credenciales.
+-- Ejecuta DESPUÉS de 0022. Idempotente.
+-- ============================================================================
+
+insert into public.settings (key, value, descripcion)
+values ('conexiones', '{}'::jsonb, 'Estado público de las conexiones de redes y fuentes de datos')
+on conflict (key) do nothing;
+
+-- ===== 0023_produccion.sql =====
+-- ============================================================================
+-- UTL 360 · 0023_produccion.sql
+-- Submódulo de Comunicaciones: Producción de video (IA).
+--   · video_projects     : tablero de videos (idea → guión → producción → publicado).
+--   · video_research     : notas de investigación de temas por proyecto.
+--   · video_generations  : trabajos de imagen/video en Higgsfield (asíncronos).
+--   · video_virality     : análisis de viralidad + recomendaciones por proyecto.
+-- Generación real: texto con la IA ya configurada (DeepSeek/OpenAI); imagen/video
+-- con Higgsfield Cloud API; investigación con una API de búsqueda web. Sin llave,
+-- cada capacidad cae a modo mock (igual que el Asistente IA).
+-- Ejecuta DESPUÉS de 0022. Idempotente.
+-- ============================================================================
+
+do $$ begin
+  create type video_fase as enum
+    ('idea','investigacion','guion','produccion','edicion','aprobado','publicado');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type generation_kind as enum ('imagen','video');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type generation_status as enum ('pending','processing','completed','failed');
+exception when duplicate_object then null; end $$;
+
+-- ─────────────── Proyectos de video (el hub del tablero) ───────────────
+create table if not exists public.video_projects (
+  id            uuid primary key default gen_random_uuid(),
+  titulo        text not null,
+  descripcion   text,
+  fase          video_fase not null default 'idea',
+  objetivo      text,                                 -- mensaje / objetivo del video
+  plataformas   text[] not null default '{}',         -- TikTok, Reels, YouTube Shorts, ...
+  -- Artefactos de texto canónicos del proyecto (borradores editables por humano).
+  guion             text,
+  copy_text         text,
+  descripcion_video text,
+  titulos           jsonb not null default '[]'::jsonb, -- opciones de título
+  hashtags          text[] not null default '{}',
+  portada_url       text,                              -- portada elegida (de una generación)
+  -- Enlaces opcionales a otros módulos (sin duplicarlos).
+  post_id       uuid references public.content_posts(id) on delete set null,
+  cobertura_id  uuid references public.coberturas(id) on delete set null,
+  responsable_id uuid references auth.users(id) on delete set null,
+  contexto_operativo text not null default 'comunicacional',
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  deleted_at    timestamptz
+);
+create index if not exists idx_video_projects_fase on public.video_projects(fase);
+create index if not exists idx_video_projects_created on public.video_projects(created_at desc);
+
+-- ─────────────── Investigación de temas ───────────────
+create table if not exists public.video_research (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.video_projects(id) on delete cascade,
+  tema        text not null,
+  contenido   text,                                   -- síntesis de IA (ángulos, ganchos)
+  fuentes     jsonb not null default '[]'::jsonb,     -- [{title,url,snippet}]
+  fuente_ia   text,                                   -- proveedor usado (deepseek/openai/mock)
+  created_by  uuid references auth.users(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_video_research_project on public.video_research(project_id, created_at desc);
+
+-- ─────────────── Generaciones visuales (Higgsfield) ───────────────
+create table if not exists public.video_generations (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.video_projects(id) on delete cascade,
+  kind        generation_kind not null default 'imagen',
+  prompt      text not null,
+  status      generation_status not null default 'pending',
+  provider    text not null default 'higgsfield',
+  external_id text,                                   -- id del job en Higgsfield
+  result_url  text,                                   -- URL del asset generado
+  error       text,
+  params      jsonb not null default '{}'::jsonb,     -- {model,width,height,duration,image_url,...}
+  is_portada  boolean not null default false,
+  created_by  uuid references auth.users(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists idx_video_generations_project on public.video_generations(project_id, created_at desc);
+create index if not exists idx_video_generations_status on public.video_generations(status);
+
+-- ─────────────── Análisis de viralidad + recomendaciones ───────────────
+create table if not exists public.video_virality (
+  id             uuid primary key default gen_random_uuid(),
+  project_id     uuid not null references public.video_projects(id) on delete cascade,
+  target         text not null default 'idea',        -- idea|guion|portada|video
+  input_ref      text,                                -- texto o URL analizada
+  score          int,                                 -- 0..100
+  veredicto      text,
+  fortalezas     text[] not null default '{}',
+  riesgos        text[] not null default '{}',
+  recomendaciones text[] not null default '{}',
+  raw            jsonb not null default '{}'::jsonb,
+  fuente         text,                                -- proveedor (deepseek/openai/higgsfield/mock)
+  created_by     uuid references auth.users(id) on delete set null,
+  created_at     timestamptz not null default now()
+);
+create index if not exists idx_video_virality_project on public.video_virality(project_id, created_at desc);
+
+-- ─────────────── ¿Quién gestiona producción de video? ───────────────
+create or replace function public.can_manage_produccion()
+returns boolean language sql stable security definer set search_path = public as $$
+  select
+    public.is_admin()
+    or public.has_role('direccion_general'::app_role)
+    or public.has_role('coordinador_utl'::app_role)
+    or public.has_role('comunicaciones'::app_role);
+$$;
+
+-- ─────────────── RLS ───────────────
+alter table public.video_projects    enable row level security;
+alter table public.video_projects    force row level security;
+alter table public.video_research     enable row level security;
+alter table public.video_research     force row level security;
+alter table public.video_generations  enable row level security;
+alter table public.video_generations  force row level security;
+alter table public.video_virality     enable row level security;
+alter table public.video_virality     force row level security;
+
+drop policy if exists video_projects_read on public.video_projects;
+create policy video_projects_read on public.video_projects for select to authenticated
+  using (public.is_staff() and deleted_at is null);
+drop policy if exists video_projects_write on public.video_projects;
+create policy video_projects_write on public.video_projects for all to authenticated
+  using (public.can_manage_produccion()) with check (public.can_manage_produccion());
+
+drop policy if exists video_research_read on public.video_research;
+create policy video_research_read on public.video_research for select to authenticated
+  using (public.is_staff());
+drop policy if exists video_research_write on public.video_research;
+create policy video_research_write on public.video_research for all to authenticated
+  using (public.can_manage_produccion()) with check (public.can_manage_produccion());
+
+drop policy if exists video_generations_read on public.video_generations;
+create policy video_generations_read on public.video_generations for select to authenticated
+  using (public.is_staff());
+drop policy if exists video_generations_write on public.video_generations;
+create policy video_generations_write on public.video_generations for all to authenticated
+  using (public.can_manage_produccion()) with check (public.can_manage_produccion());
+
+drop policy if exists video_virality_read on public.video_virality;
+create policy video_virality_read on public.video_virality for select to authenticated
+  using (public.is_staff());
+drop policy if exists video_virality_write on public.video_virality;
+create policy video_virality_write on public.video_virality for all to authenticated
+  using (public.can_manage_produccion()) with check (public.can_manage_produccion());
+
+-- ─────────────── Triggers updated_at + auditoría ───────────────
+drop trigger if exists trg_video_projects_updated on public.video_projects;
+create trigger trg_video_projects_updated before update on public.video_projects
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_video_generations_updated on public.video_generations;
+create trigger trg_video_generations_updated before update on public.video_generations
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_video_projects_audit on public.video_projects;
+create trigger trg_video_projects_audit
+  after insert or update or delete on public.video_projects
+  for each row execute function public.log_audit_event();
+
+-- ===== 0024_monitor_item_analysis.sql =====
+-- ============================================================================
+-- UTL 360 · 0024_monitor_item_analysis.sql
+-- Análisis por mención: resumen, si habla directamente de la persona, etiquetas
+-- de tema y un análisis breve (generados por IA sobre el titular/contenido).
+-- Ejecuta DESPUÉS de 0023. Idempotente.
+-- ============================================================================
+
+alter table public.monitor_items
+  add column if not exists resumen     text,
+  add column if not exists es_directo  boolean,
+  add column if not exists etiquetas   text[] not null default '{}',
+  add column if not exists analisis    text,
+  add column if not exists analizado_at timestamptz;
+
+-- ===== 0025_monitor_schedule.sql =====
+-- ============================================================================
+-- UTL 360 · 0025_monitor_schedule.sql
+-- Programación automática del monitoreo por persona: frecuencia y hora.
+-- El cron (/api/cron/monitoreo) revisa cada hora quién está "vencido" y
+-- ejecuta la recolección desde todas las APIs conectadas.
+-- Ejecuta DESPUÉS de 0024. Idempotente.
+-- ============================================================================
+
+alter table public.monitor_persons
+  add column if not exists auto_activo     boolean not null default false,
+  add column if not exists auto_frecuencia text not null default 'manual',  -- manual|cada_hora|cada_6h|cada_12h|diario
+  add column if not exists auto_hora        int not null default 8;         -- 0-23, hora Colombia para 'diario'
+
+-- ===== 0026_monitor_run_tipo.sql =====
+-- ============================================================================
+-- UTL 360 · 0026_monitor_run_tipo.sql
+-- Distingue el tipo de corrida de recolección: 'reciente' (incremental/programada)
+-- o 'barrido' (búsqueda amplia/histórica). Ejecuta DESPUÉS de 0025. Idempotente.
+-- ============================================================================
+
+alter table public.monitor_runs
+  add column if not exists tipo text not null default 'reciente';   -- reciente|barrido
+
+-- ===== 0027_avatares.sql =====
+-- ============================================================================
+-- UTL 360 · 0027_avatares.sql
+-- Submódulo de Comunicaciones: AVATARES (personajes de marca para generar
+-- contenido con personalidad, imagen y voz).
+--   · avatars       : personajes de marca (personalidad, look, voz).
+--   · avatar_models : catálogo de modelos de generación (imagen/video/voz/3d).
+--   · avatar_jobs   : trabajos de generación (voz automática vía ElevenLabs;
+--                     imagen/video vía Higgsfield — API REST o asistido).
+-- Arquitectura HÍBRIDA:
+--   - Voz: ElevenLabs REST (automático) cuando hay conexión configurada.
+--   - Imagen/Video: se registran como "trabajo" y se completan por API de
+--     Higgsfield (cuando hay clave) o de forma asistida (MCP) subiendo el asset.
+-- Las CLAVES de ElevenLabs/Higgsfield se guardan como conexiones en app_secrets
+-- (Configuración → Integraciones), NO en esta migración.
+-- Ejecuta DESPUÉS de 0026. Idempotente.
+-- ============================================================================
+
+-- ─────────────── ¿Quién gestiona avatares? ───────────────
+create or replace function public.can_manage_avatares()
+returns boolean language sql stable security definer set search_path = public as $$
+  select
+    public.is_admin()
+    or public.has_role('direccion_general'::app_role)
+    or public.has_role('coordinador_utl'::app_role)
+    or public.has_role('comunicaciones'::app_role);
+$$;
+
+-- ─────────────── Avatares (personajes de marca) ───────────────
+create table if not exists public.avatars (
+  id             uuid primary key default gen_random_uuid(),
+  nombre         text not null,
+  slug           text unique,
+  arquetipo      text,                                  -- p. ej. "vocero", "reportero", "juvenil"
+  descripcion    text,                                  -- pitch corto del personaje
+  personalidad   text,                                  -- bio/personalidad (puede autogenerarse con IA)
+  tono           text,                                  -- p. ej. "cercano, firme, esperanzador"
+  valores        text[] not null default '{}',          -- valores/temas que encarna
+  estilo_visual  text,                                  -- descripción del look (para prompts de imagen)
+  foto_refs      text[] not null default '{}',          -- URLs de imágenes de referencia (consistencia)
+  avatar_url     text,                                  -- retrato principal del personaje
+  -- Voz
+  voice_provider text not null default 'elevenlabs',    -- elevenlabs|higgsfield|otro
+  voice_id       text,                                  -- id de la voz en el proveedor
+  voice_name     text,
+  voice_settings jsonb not null default '{}'::jsonb,     -- {stability, similarity_boost, style, model}
+  -- Modelos preferidos por defecto (claves de avatar_models)
+  modelo_imagen  text,
+  modelo_video   text,
+  activo         boolean not null default true,
+  created_by     uuid references auth.users(id) on delete set null,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  deleted_at     timestamptz
+);
+create index if not exists idx_avatars_activo on public.avatars(activo) where deleted_at is null;
+
+-- ─────────────── Catálogo de modelos de generación ───────────────
+create table if not exists public.avatar_models (
+  clave         text primary key,                        -- id estable p. ej. 'hf-soul'
+  proveedor     text not null,                           -- higgsfield|elevenlabs|otro
+  tipo          text not null,                           -- imagen|video|voz|3d
+  label         text not null,
+  descripcion   text,
+  params_schema jsonb not null default '{}'::jsonb,       -- pistas de parámetros para la UI
+  activo        boolean not null default true,
+  orden         int not null default 0
+);
+
+-- ─────────────── Trabajos de generación ───────────────
+create table if not exists public.avatar_jobs (
+  id           uuid primary key default gen_random_uuid(),
+  avatar_id    uuid not null references public.avatars(id) on delete cascade,
+  tipo         text not null default 'imagen',           -- imagen|video|voz|3d
+  modelo       text,                                     -- clave de avatar_models
+  proveedor    text,                                     -- higgsfield|elevenlabs|otro
+  titulo       text,
+  prompt       text,                                     -- prompt/guion de generación
+  params       jsonb not null default '{}'::jsonb,        -- parámetros específicos del modelo
+  input_refs   text[] not null default '{}',             -- imágenes/audio de entrada
+  estado       text not null default 'pendiente',        -- pendiente|procesando|listo|error
+  provider_job_id text,                                  -- id del job en el proveedor (para polling)
+  output_url   text,                                     -- resultado final (imagen/video/mp3)
+  output_meta  jsonb not null default '{}'::jsonb,        -- {duration, width, height, mime…}
+  error_msg    text,
+  -- Vínculos con otras herramientas de Comunicaciones
+  post_id      uuid,                                     -- publicación a la que se adjuntó
+  cobertura_id uuid,                                     -- cobertura (Drive) a la que se subió
+  drive_file_id text,
+  person_id    uuid,                                     -- persona de monitoreo usada como insumo
+  created_by   uuid references auth.users(id) on delete set null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists idx_avatar_jobs_avatar on public.avatar_jobs(avatar_id, created_at desc);
+create index if not exists idx_avatar_jobs_estado on public.avatar_jobs(estado);
+
+-- ─────────────── RLS ───────────────
+alter table public.avatars       enable row level security;
+alter table public.avatars       force row level security;
+alter table public.avatar_models enable row level security;
+alter table public.avatar_models force row level security;
+alter table public.avatar_jobs   enable row level security;
+alter table public.avatar_jobs   force row level security;
+
+drop policy if exists avatars_read on public.avatars;
+create policy avatars_read on public.avatars for select to authenticated
+  using (public.is_staff() and deleted_at is null);
+drop policy if exists avatars_write on public.avatars;
+create policy avatars_write on public.avatars for all to authenticated
+  using (public.can_manage_avatares()) with check (public.can_manage_avatares());
+
+drop policy if exists avatar_models_read on public.avatar_models;
+create policy avatar_models_read on public.avatar_models for select to authenticated
+  using (public.is_staff());
+drop policy if exists avatar_models_write on public.avatar_models;
+create policy avatar_models_write on public.avatar_models for all to authenticated
+  using (public.can_manage_avatares()) with check (public.can_manage_avatares());
+
+drop policy if exists avatar_jobs_read on public.avatar_jobs;
+create policy avatar_jobs_read on public.avatar_jobs for select to authenticated
+  using (public.is_staff());
+drop policy if exists avatar_jobs_write on public.avatar_jobs;
+create policy avatar_jobs_write on public.avatar_jobs for all to authenticated
+  using (public.can_manage_avatares()) with check (public.can_manage_avatares());
+
+-- ─────────────── Triggers updated_at + auditoría ───────────────
+drop trigger if exists trg_avatars_updated on public.avatars;
+create trigger trg_avatars_updated before update on public.avatars
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_avatar_jobs_updated on public.avatar_jobs;
+create trigger trg_avatar_jobs_updated before update on public.avatar_jobs
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_avatars_audit on public.avatars;
+create trigger trg_avatars_audit
+  after insert or update or delete on public.avatars
+  for each row execute function public.log_audit_event();
+
+-- ─────────────── Bucket de assets de avatares (público) ───────────────
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('avatars','avatars', true, 26214400)  -- 25 MB (video corto/imagen/audio)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
+
+drop policy if exists "utl read avatars" on storage.objects;
+create policy "utl read avatars" on storage.objects for select to public using (bucket_id = 'avatars');
+drop policy if exists "utl write avatars" on storage.objects;
+create policy "utl write avatars" on storage.objects for insert to authenticated with check (bucket_id = 'avatars');
+drop policy if exists "utl delete avatars" on storage.objects;
+create policy "utl delete avatars" on storage.objects for delete to authenticated using (bucket_id = 'avatars');
+
+-- ─────────────── Seed: catálogo de modelos (editable con `activo`) ───────────────
+insert into public.avatar_models (clave, proveedor, tipo, label, descripcion, orden) values
+  ('hf-soul',       'higgsfield', 'imagen', 'Higgsfield Soul',        'Imagen realista de alta fidelidad para retratos del personaje.', 10),
+  ('hf-soul-id',    'higgsfield', 'imagen', 'Higgsfield Soul (ID)',   'Imagen con consistencia de personaje a partir de fotos de referencia.', 20),
+  ('hf-image',      'higgsfield', 'imagen', 'Higgsfield Imagen',      'Generación de imagen general (escenas, piezas gráficas).', 30),
+  ('hf-dop',        'higgsfield', 'video',  'Higgsfield DoP',         'Video cinematográfico a partir de texto o imagen.', 40),
+  ('hf-speak',      'higgsfield', 'video',  'Higgsfield Speak',       'Avatar que habla (lip-sync) a partir de retrato + audio/guion.', 50),
+  ('hf-video',      'higgsfield', 'video',  'Higgsfield Video',       'Video general (motion) del personaje.', 60),
+  ('hf-3d',         'higgsfield', '3d',     'Higgsfield 3D',          'Genera una malla 3D (GLB) a partir de una imagen del personaje.', 70),
+  ('el-multi-v2',   'elevenlabs', 'voz',    'ElevenLabs Multilingual v2', 'Voz multilingüe de alta calidad (español).', 80),
+  ('el-turbo-v25',  'elevenlabs', 'voz',    'ElevenLabs Turbo v2.5',  'Voz rápida y económica para lotes de audio.', 90)
+on conflict (clave) do nothing;
+
+-- ─────────────── Seed: avatar de ejemplo ───────────────
+insert into public.avatars (nombre, slug, arquetipo, descripcion, personalidad, tono, valores, estilo_visual, voice_provider, modelo_imagen, modelo_video)
+select
+  'La Voz del Barrio', 'la-voz-del-barrio', 'vocero comunitario',
+  'Vocero digital cercano que traduce las propuestas de la campaña al lenguaje de la calle.',
+  'Persona joven, empática y directa. Conoce los problemas del territorio y habla sin tecnicismos. Optimista pero sin prometer lo imposible.',
+  'cercano, firme, esperanzador',
+  array['participación','territorio','transparencia','oportunidades'],
+  'Retrato de medio cuerpo, luz natural cálida, fondo urbano de Bogotá, estética documental, ropa casual.',
+  'elevenlabs', 'hf-soul', 'hf-speak'
+where not exists (
+  select 1 from public.avatars where slug = 'la-voz-del-barrio'
+);
+
+-- ===== 0028_misredes_linktree.sql =====
+-- ============================================================================
+-- UTL 360 · 0028_misredes_linktree.sql
+-- Configuración editable de la página pública /misredes (estilo Linktree).
+-- Lectura pública (no sensible); escritura solo para el equipo de comunicaciones.
+-- ============================================================================
+
+create table if not exists public.linktree_config (
+  id         int primary key default 1,
+  data       jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.linktree_config enable row level security;
+alter table public.linktree_config force row level security;
+
+-- Lectura pública: la página la carga con la anon key.
+drop policy if exists linktree_read on public.linktree_config;
+create policy linktree_read on public.linktree_config for select to anon, authenticated
+  using (true);
+
+-- Escritura: solo quien gestiona comunicaciones (admin/dirección/coordinación/comunicaciones).
+drop policy if exists linktree_write on public.linktree_config;
+create policy linktree_write on public.linktree_config for all to authenticated
+  using (public.can_manage_comunicaciones())
+  with check (public.can_manage_comunicaciones());
+
+insert into public.linktree_config (id, data)
+values (1, '{}'::jsonb)
+on conflict (id) do nothing;

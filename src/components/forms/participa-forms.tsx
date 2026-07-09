@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -192,6 +192,14 @@ function SolicitudForm() {
     useForm<PublicSolicitudInput>({ resolver: zodResolver(publicSolicitudSchema) });
 
   const categoria = watch("categoria");
+  const [localidad, setLocalidad] = useState("");
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("localidad");
+    if (p && (LOCALIDADES as readonly string[]).includes(p)) {
+      setLocalidad(p);
+      setValue("localidad", p as PublicSolicitudInput["localidad"]);
+    }
+  }, [setValue]);
 
   if (radicado) return <RadicadoOk radicado={radicado} onReset={() => { reset(); setRadicado(null); }} />;
 
@@ -248,7 +256,13 @@ function SolicitudForm() {
       </div>
       <div>
         <Label>Localidad</Label>
-        <Select onValueChange={(v) => setValue("localidad", v as PublicSolicitudInput["localidad"])}>
+        <Select
+          value={localidad}
+          onValueChange={(v) => {
+            setLocalidad(v);
+            setValue("localidad", v as PublicSolicitudInput["localidad"]);
+          }}
+        >
           <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
           <SelectContent>
             {LOCALIDADES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
@@ -330,6 +344,15 @@ function PropuestaForm() {
   const { register, handleSubmit, setValue, reset, formState } =
     useForm<TerritorialProposalInput>({ resolver: zodResolver(territorialProposalSchema) });
 
+  const [localidad, setLocalidad] = useState("");
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("localidad");
+    if (p && (LOCALIDADES as readonly string[]).includes(p)) {
+      setLocalidad(p);
+      setValue("localidad", p as TerritorialProposalInput["localidad"]);
+    }
+  }, [setValue]);
+
   if (radicado) return <RadicadoOk radicado={radicado} onReset={() => { reset(); setRadicado(null); }} />;
 
   return (
@@ -350,7 +373,13 @@ function PropuestaForm() {
       </div>
       <div>
         <Label>Localidad *</Label>
-        <Select onValueChange={(v) => setValue("localidad", v as TerritorialProposalInput["localidad"])}>
+        <Select
+          value={localidad}
+          onValueChange={(v) => {
+            setLocalidad(v);
+            setValue("localidad", v as TerritorialProposalInput["localidad"]);
+          }}
+        >
           <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
           <SelectContent>
             {LOCALIDADES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}

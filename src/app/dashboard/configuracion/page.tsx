@@ -6,20 +6,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UsuariosManager } from "@/components/dashboard/usuarios-manager";
 import { RolesManager } from "@/components/dashboard/roles-manager";
 import { GoogleDriveCard } from "@/components/dashboard/google-drive-card";
+import { ConexionesManager } from "@/components/dashboard/conexiones-manager";
 import { listUsers } from "@/actions/usuarios";
 import { listRoles, listPermissions } from "@/actions/roles";
 import { getDriveStatus } from "@/actions/google";
+import { listConnections } from "@/actions/conexiones";
 
-export default async function ConfiguracionPage() {
+export default async function ConfiguracionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   // Solo admins (defensa adicional a RLS).
   await requireRole(["super_admin", "administrador"]);
 
-  const [users, roles, permissions, driveStatus] = await Promise.all([
+  const [{ tab }, users, roles, permissions, driveStatus, connections] = await Promise.all([
+    searchParams,
     listUsers(),
     listRoles(),
     listPermissions(),
     getDriveStatus(),
+    listConnections(),
   ]);
+
+  const activeTab = ["usuarios", "roles", "integraciones"].includes(tab ?? "")
+    ? (tab as string)
+    : "usuarios";
 
   return (
     <>
@@ -28,7 +40,7 @@ export default async function ConfiguracionPage() {
         description="Gestiona usuarios, roles y permisos del sistema."
       />
 
-      <Tabs defaultValue="usuarios">
+      <Tabs defaultValue={activeTab}>
         <TabsList>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
@@ -40,10 +52,11 @@ export default async function ConfiguracionPage() {
         <TabsContent value="roles">
           <RolesManager roles={roles} permissions={permissions} />
         </TabsContent>
-        <TabsContent value="integraciones">
+        <TabsContent value="integraciones" className="space-y-6">
           <Suspense fallback={null}>
             <GoogleDriveCard status={driveStatus} />
           </Suspense>
+          <ConexionesManager connections={connections} />
         </TabsContent>
       </Tabs>
     </>

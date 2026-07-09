@@ -93,7 +93,7 @@ export async function createWorkspace(input: {
     .insert({
       nombre: input.nombre.trim(),
       descripcion: input.descripcion?.trim() || null,
-      color: input.color || "#E30613",
+      color: input.color || "#8e378e",
       created_by: user.id,
     })
     .select("id")

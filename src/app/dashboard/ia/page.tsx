@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 
@@ -32,6 +32,15 @@ export default function IaPage() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [pending, start] = useTransition();
+
+  // Prefill desde otros módulos (p. ej. "Enviar al Asistente IA" del monitoreo).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const pr = p.get("prompt");
+    const t = p.get("task");
+    if (pr) setInput(pr);
+    if (t && TOOLS.some((x) => x.value === t)) setTask(t as IaTask);
+  }, []);
 
   return (
     <>

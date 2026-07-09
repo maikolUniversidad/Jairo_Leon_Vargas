@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Wordmark } from "@/components/marca";
 import { loginSchema, type LoginInput } from "@/lib/validations";
 import { signIn } from "@/actions/auth";
 
@@ -70,11 +71,9 @@ export default function LoginPage() {
         </Link>
         <Card>
           <CardContent className="p-8">
-            <div className="mb-6 text-center">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-black text-white">
-                JLV
-              </span>
-              <h1 className="mt-3 text-xl font-bold">Ingreso del equipo</h1>
+            <div className="mb-6 flex flex-col items-center text-center">
+              <Wordmark className="items-center" />
+              <h1 className="mt-4 text-xl font-bold">Ingreso del equipo</h1>
               <p className="text-sm text-muted-foreground">Plataforma UTL 360</p>
             </div>
             <Suspense fallback={null}>

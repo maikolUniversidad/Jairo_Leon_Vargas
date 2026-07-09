@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/tareas-vencimiento",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/monitoreo",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -48,7 +48,7 @@ function personIcon(L: any, name: string) {
   const ini = name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return L.divIcon({
     className: "",
-    html: `<div style="background:#0e7490;color:#fff;border:2px solid #fff;border-radius:9999px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font:600 11px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4)">${ini}</div>`,
+    html: `<div style="background:#8e378e;color:#fff;border:2px solid #fff;border-radius:9999px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font:600 11px sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4)">${ini}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
@@ -124,7 +124,7 @@ export function LiveMap({
     const pts: [number, number][] = [];
 
     if (trail.length > 1) {
-      L.polyline(trail, { color: "#0e7490", weight: 3, opacity: 0.6, dashArray: "4 6" }).addTo(layer);
+      L.polyline(trail, { color: "#8e378e", weight: 3, opacity: 0.6, dashArray: "4 6" }).addTo(layer);
       for (const t of trail) pts.push(t);
     }
 

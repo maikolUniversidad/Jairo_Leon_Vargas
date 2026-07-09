@@ -1,61 +1,55 @@
-import { MapPinned } from "lucide-react";
-
-import { PageHeader, EmptyState } from "@/components/dashboard/shared";
-import { Card, CardContent } from "@/components/ui/card";
-import { PriorityBadge } from "@/lib/status";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/dashboard/shared";
+import { TerritorioExplorer } from "@/components/dashboard/territorio-explorer";
+import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { Zone } from "@/types/database";
+import type { AppRole } from "@/types/roles";
+import type { Zone, Profile } from "@/types/database";
 
-async function getZones(): Promise<Zone[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("zones")
-      .select("*")
+const MANAGER_ROLES: AppRole[] = ["super_admin", "administrador", "coordinador_territorial", "coordinador_utl"];
+
+export default async function TerritorioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ capa?: string }>;
+}) {
+  const [{ capa }, user, supabase] = await Promise.all([
+    searchParams,
+    getSessionUser(),
+    createClient(),
+  ]);
+
+  const [{ data: zones }, { data: tasks }, { data: profiles }] = await Promise.all([
+    supabase.from("zones").select("*").is("deleted_at", null).order("nombre_zona"),
+    supabase
+      .from("tasks")
+      .select("zona_id, estado")
       .is("deleted_at", null)
-      .order("prioridad", { ascending: false })
-      .limit(100);
-    return (data as Zone[]) ?? [];
-  } catch {
-    return [];
-  }
-}
+      .not("zona_id", "is", null),
+    supabase.from("profiles").select("id, full_name, email").eq("is_active", true).order("full_name"),
+  ]);
 
-export default async function TerritorioDashboardPage() {
-  const zones = await getZones();
+  // Conteo de tareas abiertas por zona.
+  const taskCounts: Record<string, number> = {};
+  for (const t of (tasks as { zona_id: string; estado: string }[]) ?? []) {
+    if (t.estado === "finalizada" || t.estado === "cancelada") continue;
+    taskCounts[t.zona_id] = (taskCounts[t.zona_id] ?? 0) + 1;
+  }
+
+  const canManage = !!user && (user.isAdmin || user.roles.some((r) => MANAGER_ROLES.includes(r)));
 
   return (
     <>
       <PageHeader
-        title="Territorio / zonas"
-        description="Organización por localidad, UPZ, barrio o municipio."
+        title="Territorio"
+        description="Mapa de Bogotá (localidades y barrios) y de Colombia. Selecciona una zona para gestionarla y crear tareas que se sincronizan con el Kanban."
       />
-      {zones.length === 0 ? (
-        <EmptyState icon={MapPinned} title="Sin zonas" description="Crea zonas territoriales para organizar el trabajo de campo." />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {zones.map((z) => (
-            <Card key={z.id}>
-              <CardContent className="p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <Badge variant="muted">{z.tipo_zona}</Badge>
-                  <PriorityBadge priority={z.prioridad} />
-                </div>
-                <h3 className="font-semibold">{z.nombre_zona}</h3>
-                {z.descripcion && <p className="mt-1 text-sm text-muted-foreground">{z.descripcion}</p>}
-                {z.problematicas && z.problematicas.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {z.problematicas.slice(0, 4).map((p) => (
-                      <Badge key={p} variant="outline">{p}</Badge>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <TerritorioExplorer
+        zones={(zones as Zone[]) ?? []}
+        taskCounts={taskCounts}
+        profiles={(profiles as Pick<Profile, "id" | "full_name" | "email">[]) ?? []}
+        canManage={canManage}
+        initialCapa={capa}
+      />
     </>
   );
 }

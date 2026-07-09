@@ -60,7 +60,15 @@ function Breakdown({ title, counts, csv }: { title: string; counts: Counts; csv:
   );
 }
 
-export function ReportesView({ general, users }: { general: GeneralReport; users: PersonOption[] }) {
+export function ReportesView({
+  general,
+  users,
+  initialTab = "general",
+}: {
+  general: GeneralReport;
+  users: PersonOption[];
+  initialTab?: "general" | "persona";
+}) {
   const [userId, setUserId] = useState("");
   const [report, setReport] = useState<PersonReport | null>(null);
   const [pending, start] = useTransition();
@@ -74,7 +82,7 @@ export function ReportesView({ general, users }: { general: GeneralReport; users
   const userName = users.find((u) => u.id === userId)?.full_name ?? "persona";
 
   return (
-    <Tabs defaultValue="general">
+    <Tabs defaultValue={initialTab}>
       <TabsList>
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="persona">Por persona</TabsTrigger>

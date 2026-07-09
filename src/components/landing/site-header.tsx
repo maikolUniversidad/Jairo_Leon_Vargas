@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/marca";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -22,14 +23,10 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-secondary/95 text-white backdrop-blur supports-[backdrop-filter]:bg-secondary/80">
+      <div className="h-1 w-full bg-franja" />
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black text-white shadow">
-            JLV
-          </span>
-          <span className="hidden text-lg leading-tight sm:block">
-            Jairo León Vargas
-          </span>
+        <Link href="/" className="flex items-center" aria-label="Inicio — Jairo León Vargas">
+          <Wordmark />
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">

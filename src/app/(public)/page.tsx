@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Wordmark } from "@/components/marca";
 import { getPerfilPublico } from "@/lib/settings";
 
 const ENFOQUES = [
@@ -79,10 +80,8 @@ export default async function HomePage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={perfil.foto_url} alt={perfil.nombre} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-8 text-center">
-                  <span className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-3xl font-black">
-                    JLV
-                  </span>
+                <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8 text-center text-white">
+                  <Wordmark size="lg" className="items-center" />
                   <p className="text-sm text-white/70">
                     [Foto oficial pendiente · editable desde el panel]
                   </p>

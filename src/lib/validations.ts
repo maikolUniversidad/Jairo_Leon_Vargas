@@ -241,6 +241,67 @@ export const calendarSchema = z.object({
 });
 export type CalendarInput = z.infer<typeof calendarSchema>;
 
+/* ──────────────── Comunicaciones: avatares (personajes de marca) ──────────────── */
+
+export const avatarSchema = z.object({
+  nombre: z.string().trim().min(2, "Nombre del personaje requerido").max(120),
+  arquetipo: optText(80),
+  descripcion: optText(500),
+  personalidad: z.string().trim().max(4000).optional().or(z.literal("")),
+  tono: optText(200),
+  valores: z.array(z.string().trim().max(40)).optional().default([]),
+  estilo_visual: z.string().trim().max(2000).optional().or(z.literal("")),
+  voice_provider: z.enum(["elevenlabs", "higgsfield", "otro"]).default("elevenlabs"),
+  voice_id: optText(120),
+  voice_name: optText(120),
+  modelo_imagen: optText(60),
+  modelo_video: optText(60),
+  avatar_url: z.string().trim().optional().or(z.literal("")),
+});
+export type AvatarInput = z.infer<typeof avatarSchema>;
+
+/* ──────────────── Comunicaciones: producción de video (IA) ──────────────── */
+
+export const VIDEO_FASES_ENUM = [
+  "idea", "investigacion", "guion", "produccion", "edicion", "aprobado", "publicado",
+] as const;
+
+export const VIDEO_PLATAFORMAS = [
+  "TikTok", "Instagram Reels", "YouTube Shorts", "YouTube", "Facebook", "X (Twitter)", "WhatsApp",
+] as const;
+
+export const videoProjectSchema = z.object({
+  titulo: z.string().trim().min(3, "Título requerido").max(200),
+  descripcion: z.string().trim().max(2000).optional().or(z.literal("")),
+  objetivo: z.string().trim().max(2000).optional().or(z.literal("")),
+  fase: z.enum(VIDEO_FASES_ENUM).default("idea"),
+  plataformas: z.array(z.string().trim().max(40)).optional().default([]),
+  responsable_id: z.string().uuid().optional().or(z.literal("")),
+  post_id: z.string().uuid().optional().or(z.literal("")),
+  cobertura_id: z.string().uuid().optional().or(z.literal("")),
+  contexto_operativo: z
+    .enum(["institucional", "campana", "comunitario", "interno", "comunicacional"])
+    .default("comunicacional"),
+});
+export type VideoProjectInput = z.infer<typeof videoProjectSchema>;
+
+/** Parche editable del proyecto (artefactos de texto + fase + metadatos). */
+export const videoProjectPatchSchema = z.object({
+  titulo: z.string().trim().min(3).max(200).optional(),
+  descripcion: z.string().trim().max(2000).optional(),
+  objetivo: z.string().trim().max(2000).optional(),
+  fase: z.enum(VIDEO_FASES_ENUM).optional(),
+  plataformas: z.array(z.string().trim().max(40)).optional(),
+  guion: z.string().trim().max(20000).optional(),
+  copy_text: z.string().trim().max(8000).optional(),
+  descripcion_video: z.string().trim().max(8000).optional(),
+  titulos: z.array(z.string().trim().max(300)).optional(),
+  hashtags: z.array(z.string().trim().max(60)).optional(),
+  portada_url: z.string().trim().max(600).optional(),
+  responsable_id: z.string().uuid().optional().or(z.literal("")),
+});
+export type VideoProjectPatchInput = z.infer<typeof videoProjectPatchSchema>;
+
 export const eventSignupSchema = z.object({
   event_id: z.string().uuid("Evento inválido"),
   nombre: z.string().trim().min(2, "Ingresa tu nombre").max(120),

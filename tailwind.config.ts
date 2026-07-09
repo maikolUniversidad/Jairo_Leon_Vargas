@@ -48,13 +48,16 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Marca Pacto Histórico / Jairo León Vargas
+        // Marca Jairo León Vargas / Pacto Histórico
         marca: {
-          rojo: "#E30613",
-          dorado: "#F9C80E",
-          azul: "#102A43",
-          gris: "#F4F6F8",
-          negro: "#111827",
+          morado: "#8e378e",
+          naranja: "#f49a20",
+          rojo: "#e92025",
+          verde: "#35a74a",
+          azul: "#2a3883",
+          vinotinto: "#921b4c",
+          gris: "#f5f3f7",
+          negro: "#1c162a",
         },
       },
       borderRadius: {
@@ -67,9 +70,9 @@ const config: Config = {
       },
       backgroundImage: {
         "marca-gradient":
-          "linear-gradient(135deg, #102A43 0%, #E30613 60%, #F9C80E 100%)",
+          "linear-gradient(135deg, #2a3883 0%, #8e378e 48%, #921b4c 74%, #f49a20 100%)",
         "marca-hero":
-          "radial-gradient(circle at 20% 20%, rgba(227,6,19,0.25), transparent 45%), radial-gradient(circle at 85% 30%, rgba(249,200,14,0.20), transparent 40%), linear-gradient(160deg, #0b1f33 0%, #102A43 55%, #1b3a5c 100%)",
+          "radial-gradient(circle at 15% 18%, rgba(142,55,142,0.42), transparent 46%), radial-gradient(circle at 88% 22%, rgba(244,154,32,0.20), transparent 40%), radial-gradient(circle at 72% 96%, rgba(146,27,76,0.35), transparent 55%), linear-gradient(160deg, #23163a 0%, #2a2455 55%, #2a3883 100%)",
       },
       keyframes: {
         "accordion-down": {

@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { Facebook, Instagram, Youtube, LogIn } from "lucide-react";
 
+import { Wordmark } from "@/components/marca";
+
 export function SiteFooter() {
   return (
-    <footer className="border-t bg-secondary text-white/80">
+    <footer className="bg-secondary text-white/80">
+      <div className="h-1 w-full bg-franja" />
       <div className="container grid gap-8 py-12 md:grid-cols-4">
         <div className="md:col-span-2">
-          <div className="flex items-center gap-2 font-bold text-white">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black">
-              JLV
-            </span>
-            Jairo León Vargas
+          <div className="text-white">
+            <Wordmark />
           </div>
           <p className="mt-3 max-w-md text-sm">
             Gestión social, participación ciudadana y trabajo comunitario para

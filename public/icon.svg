@@ -1,7 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#0e7490"/>
-  <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
-        font-family="Segoe UI, Arial, sans-serif" font-size="190" font-weight="800" fill="#ffffff">JLV</text>
-  <text x="50%" y="78%" dominant-baseline="middle" text-anchor="middle"
-        font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="600" fill="#bae6fd">UTL 360</text>
+  <rect width="512" height="512" rx="96" fill="#8e378e"/>
+  <text x="50%" y="44%" dominant-baseline="middle" text-anchor="middle"
+        font-family="Segoe UI, Arial, sans-serif" font-size="205" font-weight="900" fill="#ffffff">JLV</text>
+  <text x="50%" y="63%" dominant-baseline="middle" text-anchor="middle"
+        font-family="Segoe UI, Arial, sans-serif" font-size="54" font-weight="700"
+        letter-spacing="6" fill="#f3d9f3">UTL 360</text>
+  <!-- Franja multicolor de marca -->
+  <g>
+    <rect x="131" y="372" width="50" height="20" rx="6" fill="#f49a20"/>
+    <rect x="181" y="372" width="50" height="20" rx="6" fill="#2a3883"/>
+    <rect x="231" y="372" width="50" height="20" rx="6" fill="#e92025"/>
+    <rect x="281" y="372" width="50" height="20" rx="6" fill="#35a74a"/>
+    <rect x="331" y="372" width="50" height="20" rx="6" fill="#921b4c"/>
+  </g>
 </svg>

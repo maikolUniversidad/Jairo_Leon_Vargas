@@ -231,7 +231,7 @@ function CreateWorkspaceDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [color, setColor] = useState("#E30613");
+  const [color, setColor] = useState("#8e378e");
   const [pending, start] = useTransition();
 
   return (
