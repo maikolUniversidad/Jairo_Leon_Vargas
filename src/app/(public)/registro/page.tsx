@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ParticipaForms } from "@/components/forms/participa-forms";
+import { PageIntro } from "@/components/landing/page-intro";
 
 export const metadata: Metadata = {
   title: "Únete a la comunidad",
@@ -10,12 +11,11 @@ export const metadata: Metadata = {
 export default function RegistroPage() {
   return (
     <div className="container max-w-4xl py-12 md:py-16">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold md:text-4xl">Únete a la comunidad</h1>
-        <p className="mt-2 text-muted-foreground">
-          Recibe novedades y entérate de las actividades en tu localidad.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Suma tu voz"
+        title="Únete a la comunidad"
+        description="Recibe novedades y entérate de las actividades en tu localidad."
+      />
       <ParticipaForms />
     </div>
   );

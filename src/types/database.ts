@@ -682,6 +682,88 @@ export interface VideoGeneration {
   updated_at: string;
 }
 
+/* ──────────────── Base de conocimiento (RAG) ──────────────── */
+
+export type KbEstado = "procesando" | "listo" | "error";
+
+export interface KbDocument {
+  id: string;
+  titulo: string;
+  filename: string | null;
+  mime: string | null;
+  tipo: string | null;
+  bytes: number;
+  storage_path: string | null;
+  chunks_count: number;
+  resumen: string | null;
+  estado: KbEstado;
+  error: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface KbConcept {
+  id: string;
+  nombre: string;
+  slug: string;
+  weight: number;
+  created_at: string;
+}
+
+/** Nodo del grafo de conocimiento (documento o concepto). */
+export interface KbGraphNode {
+  id: string;
+  tipo: "documento" | "concepto";
+  label: string;
+  val: number;
+}
+
+export interface KbGraphLink {
+  source: string;
+  target: string;
+  tipo: "doc-concepto" | "concepto-concepto";
+  weight: number;
+}
+
+export interface KbGraph {
+  nodes: KbGraphNode[];
+  links: KbGraphLink[];
+}
+
+/* ──────────────── Asistente IA (chat conversacional) ──────────────── */
+
+export interface IACarpeta {
+  id: string;
+  user_id: string;
+  nombre: string;
+  color: string;
+  orden: number;
+  created_at: string;
+}
+
+export interface IAConversacion {
+  id: string;
+  user_id: string;
+  carpeta_id: string | null;
+  titulo: string;
+  modelo: string;
+  fijada: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IAMensaje {
+  id: string;
+  conversacion_id: string;
+  user_id: string;
+  role: "user" | "assistant";
+  content: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface VideoViralityAnalysis {
   id: string;
   project_id: string;
