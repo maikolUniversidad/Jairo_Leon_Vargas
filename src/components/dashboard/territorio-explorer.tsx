@@ -112,7 +112,8 @@ export function TerritorioExplorer({
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Mapa + tabs */}
       <div className="space-y-3 lg:col-span-2">
-        <div className="flex flex-wrap gap-2">
+        {/* En móvil la selección de capa vive en la barra de submódulos inferior (MobileNav). */}
+        <div className="hidden flex-wrap gap-2 lg:flex">
           {TABS.map((t) => (
             <Button
               key={t.key}

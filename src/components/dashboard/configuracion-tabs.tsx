@@ -16,7 +16,9 @@ export function ConfiguracionTabs({ children }: { children: React.ReactNode }) {
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof TABS)[number])}>
-      <TabsList>
+      {/* En móvil la navegación de submódulos vive en la barra inferior (MobileNav);
+          aquí se oculta para no duplicarla. */}
+      <TabsList className="hidden lg:inline-flex">
         <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
         <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
         <TabsTrigger value="integraciones">Integraciones</TabsTrigger>

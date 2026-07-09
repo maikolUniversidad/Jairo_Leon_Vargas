@@ -82,7 +82,8 @@ export function ReportesView({
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as "general" | "persona")}>
-      <TabsList>
+      {/* En móvil la navegación de submódulos vive en la barra inferior (MobileNav). */}
+      <TabsList className="hidden lg:inline-flex">
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="persona">Por persona</TabsTrigger>
       </TabsList>

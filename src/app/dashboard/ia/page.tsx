@@ -70,7 +70,7 @@ export default async function IaPage({
   ]);
 
   return (
-    <div className="-mx-4 -mt-4 -mb-24 h-[calc(100dvh-8rem)] overflow-hidden lg:-mx-6 lg:-mt-6 lg:-mb-6 lg:h-[calc(100dvh-4rem)]">
+    <div className="-m-4 h-[calc(100dvh-8rem)] overflow-hidden lg:-m-6 lg:h-[calc(100dvh-4rem)]">
       <AsistenteClient
         userId={user.id}
         carpetasIniciales={(carpetas as IACarpeta[]) ?? []}
