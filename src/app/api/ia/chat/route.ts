@@ -1,10 +1,18 @@
 import { NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { buildPersonaContext, type PersonaTipo } from "@/lib/ia/personaContext";
 import { embedQuery, embeddingsAvailable } from "@/lib/ia/embeddings";
 import { modeloInfo } from "@/lib/ia/types";
-import { streamChat, resolveProvider, type ChatMessage, type ContentPart } from "@/lib/ia/provider";
+import {
+  streamChat,
+  completeWithTools,
+  resolveProvider,
+  type ProviderMessage,
+  type ContentPart,
+} from "@/lib/ia/provider";
+import { getToolDefs, runTool } from "@/lib/ia/dataTools";
 
 export const runtime = "nodejs";
 
@@ -27,6 +35,14 @@ const BASE =
   "Tono cercano, popular, respetuoso y no confrontacional. Responde en español de Colombia con formato Markdown claro. " +
   "REGLAS: produce borradores para revisión humana; NUNCA inventes hechos, cifras, nombres ni promesas; " +
   "si falta información, dilo. No hay publicación automática.";
+
+const DATA_INSTR =
+  "\n\nDATOS DE LA PLATAFORMA: tienes herramientas para consultar datos reales " +
+  "(ciudadanos, solicitudes, tareas, agenda, contactos, territorio). Cuando la pregunta dependa de " +
+  "cifras o registros de la plataforma, USA las herramientas y responde con los datos reales que " +
+  "devuelvan; nunca inventes números. Si una herramienta devuelve 'sin_acceso', explica que ese dato " +
+  "está fuera de los permisos del usuario. Para crear una tarea, confirma el título y usa 'crear_tarea' " +
+  "solo cuando el usuario lo pida explícitamente.";
 
 const CHART_INSTR =
   "\n\nGRÁFICAS: cuando resumas datos numéricos y una gráfica ayude, incluye un bloque de código con el lenguaje `chart` " +
@@ -129,8 +145,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Módulos visibles del usuario → determinan qué herramientas de datos expone.
+  let viewableModules: string[] = [];
+  try {
+    viewableModules = (await getSessionUser())?.viewableModules ?? [];
+  } catch {
+    viewableModules = [];
+  }
+  const toolDefs = getToolDefs(viewableModules);
+
   const system =
     BASE +
+    (toolDefs.length ? DATA_INSTR : "") +
     CHART_INSTR +
     (ragContext
       ? `\n\nBASE DE CONOCIMIENTO (fragmentos recuperados; úsalos como fuente principal y cita el título de la fuente entre paréntesis cuando los uses; si no responden la pregunta, dilo y responde con tu conocimiento general marcándolo):\n${ragContext}`
@@ -138,7 +164,7 @@ export async function POST(req: NextRequest) {
     (personaCtx ? `\n\nCONTEXTO DE LA PERSONA CONSULTADA:\n${personaCtx}` : "");
 
   // Construye los mensajes para el proveedor.
-  const providerMessages: ChatMessage[] = [{ role: "system", content: system }];
+  const providerMessages: ProviderMessage[] = [{ role: "system", content: system }];
   mensajes.forEach((m, i) => {
     const esUltimo = i === mensajes.length - 1;
     if (esUltimo && m.role === "user") {
@@ -148,11 +174,42 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  try {
-    const stream = await streamChat(modelo, providerMessages);
-    return new Response(stream, {
+  const streamResponse = (stream: ReadableStream<Uint8Array>) =>
+    new Response(stream, {
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
     });
+
+  // Bucle de herramientas: el modelo consulta datos reales según el prompt.
+  if (toolDefs.length > 0) {
+    try {
+      let usedTools = false;
+      for (let round = 0; round < 3; round++) {
+        const { content, toolCalls } = await completeWithTools(modelo, providerMessages, toolDefs);
+        if (toolCalls.length === 0) {
+          // Sin (más) herramientas: si no se usó ninguna, entregamos la respuesta ya generada.
+          if (!usedTools) return plainStream(content || "…");
+          break; // Ya hay contexto de datos → generamos la respuesta final en streaming.
+        }
+        usedTools = true;
+        providerMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
+        for (const tc of toolCalls) {
+          const result = await runTool(tc.function.name, tc.function.arguments, viewableModules);
+          providerMessages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: JSON.stringify(result).slice(0, 8000),
+          });
+        }
+      }
+      // Respuesta final (streaming) con los datos ya recuperados, sin más herramientas.
+      return streamResponse(await streamChat(modelo, providerMessages));
+    } catch {
+      // El modelo no soporta herramientas o falló el bucle: seguimos con chat normal.
+    }
+  }
+
+  try {
+    return streamResponse(await streamChat(modelo, providerMessages));
   } catch (e) {
     return plainStream(`⚠️ ${e instanceof Error ? e.message : "Error al contactar al asistente."}`);
   }

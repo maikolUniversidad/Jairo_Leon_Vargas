@@ -17,6 +17,29 @@ export interface ChatMessage {
   content: string | ContentPart[];
 }
 
+/** Llamada a herramienta devuelta por el modelo (function calling). */
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+/** Definición de herramienta (schema OpenAI-compatible). */
+export interface ToolDef {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/** Mensaje ampliado que admite tool_calls (assistant) y resultados (tool). */
+export type ProviderMessage =
+  | { role: ChatRole; content: string | ContentPart[] }
+  | { role: "assistant"; content: string | null; tool_calls: ToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+
 interface Resolved {
   url: string;
   key: string;
@@ -54,10 +77,49 @@ export function providerAvailable(modelo: string): boolean {
 }
 
 /**
+ * Completación NO-streaming con herramientas (function calling). Devuelve el
+ * texto y/o las llamadas a herramientas que el modelo pide. Se usa para el
+ * "loop" de herramientas antes de la respuesta final.
+ */
+export async function completeWithTools(
+  modelo: string,
+  messages: ProviderMessage[],
+  tools: ToolDef[],
+): Promise<{ content: string; toolCalls: ToolCall[] }> {
+  const cfg = resolveProvider(modelo);
+
+  const res = await fetch(cfg.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+    body: JSON.stringify({
+      model: cfg.model,
+      messages,
+      tools,
+      tool_choice: "auto",
+      temperature: 0.3,
+      max_tokens: 1500,
+      stream: false,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`IA ${cfg.name} respondió ${res.status}: ${detail.slice(0, 200)}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string | null; tool_calls?: ToolCall[] } }[];
+  };
+  const msg = data.choices?.[0]?.message;
+  return { content: msg?.content ?? "", toolCalls: msg?.tool_calls ?? [] };
+}
+
+/**
  * Llama al modelo con stream y devuelve un ReadableStream de TEXTO plano
  * (solo el contenido incremental del asistente). Lanza si la API responde mal.
  */
-export async function streamChat(modelo: string, messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>> {
+export async function streamChat(modelo: string, messages: ProviderMessage[]): Promise<ReadableStream<Uint8Array>> {
   const cfg = resolveProvider(modelo);
 
   const res = await fetch(cfg.url, {
