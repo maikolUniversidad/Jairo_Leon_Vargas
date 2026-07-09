@@ -24,19 +24,16 @@ export const LOGO_PACTO = svg(`
 </svg>
 `);
 
-/** Círculo con inicial para las "destacadas" (J·A·I·R·O). */
-const letter = (ch: string, bg: string) => svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="${bg}"/>
-  <text x="50" y="50" dy=".35em" text-anchor="middle"
-        font-family="'Arial Black','Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="54" fill="#ffffff">${ch}</text>
-</svg>
-`);
-
+/**
+ * Portadas de las "destacadas" (J·A·I·R·O): PNG oficiales con la letra blanca
+ * sobre el degradado morado de marca (en public/Jairo Letras/). Se recortan en
+ * círculo desde el CSS (`.dest .circle` → border-radius:50% + object-fit:cover),
+ * así que basta el archivo cuadrado.
+ */
 export const COVERS: Record<string, string> = {
-  J: letter("J", "#7a2470"),
-  A: letter("A", "#a73194"),
-  I: letter("I", "#c94fb4"),
-  R: letter("R", "#7a2e7e"),
-  O: letter("O", "#a73194"),
+  J: "/Jairo%20Letras/J.png",
+  A: "/Jairo%20Letras/A.png",
+  I: "/Jairo%20Letras/I.png",
+  R: "/Jairo%20Letras/R.png",
+  O: "/Jairo%20Letras/O.png",
 };
