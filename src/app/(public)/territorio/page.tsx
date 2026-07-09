@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TerritorioMapa } from "@/components/landing/territorio-mapa";
+import { PageIntro } from "@/components/landing/page-intro";
 
 export const metadata: Metadata = {
   title: "Territorio",
@@ -13,13 +14,11 @@ export const metadata: Metadata = {
 export default function TerritorioPage() {
   return (
     <div className="container py-12 md:py-16">
-      <header className="mb-8 max-w-2xl">
-        <h1 className="text-3xl font-bold md:text-4xl">Territorio</h1>
-        <p className="mt-2 text-muted-foreground">
-          Bogotá se construye localidad por localidad. Explora el mapa, elige tu
-          zona y cuéntanos las problemáticas y propuestas de tu barrio.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Localidad por localidad"
+        title="Territorio"
+        description="Bogotá se construye localidad por localidad. Explora el mapa, elige tu zona y cuéntanos las problemáticas y propuestas de tu barrio."
+      />
 
       <TerritorioMapa />
 

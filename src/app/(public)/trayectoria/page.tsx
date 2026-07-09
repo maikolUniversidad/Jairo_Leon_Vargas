@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageIntro } from "@/components/landing/page-intro";
 
 export const metadata: Metadata = {
   title: "Trayectoria",
@@ -32,28 +33,25 @@ const HITOS = [
 export default function TrayectoriaPage() {
   return (
     <div className="container max-w-3xl py-12 md:py-16">
-      <header className="mb-10">
-        <Badge variant="secondary" className="mb-3">Trayectoria verificada</Badge>
-        <h1 className="text-3xl font-bold md:text-4xl">Trayectoria pública</h1>
-        <p className="mt-2 text-muted-foreground">
-          Información basada en hechos verificables. Los contenidos detallados se
-          gestionan desde el panel y se publican con respaldo documental.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="Trayectoria verificada"
+        title="Trayectoria pública"
+        description="Información basada en hechos verificables. Los contenidos detallados se gestionan desde el panel y se publican con respaldo documental."
+      />
 
-      <ol className="relative space-y-6 border-l-2 border-primary/20 pl-6">
-        {HITOS.map((h) => (
+      <ol className="relative space-y-5 border-l-2 border-primary/20 pl-8">
+        {HITOS.map((h, i) => (
           <li key={h.titulo} className="relative">
-            <span className="absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-background">
-              <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="absolute -left-[41px] flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-black text-primary-foreground shadow-sm">
+              {i + 1}
             </span>
-            <Card>
+            <Card className="shadow-sm transition-shadow hover:shadow-md">
               <CardContent className="p-5">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge variant="muted">{h.tag}</Badge>
-                  <span className="text-xs text-muted-foreground">{h.periodo}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{h.periodo}</span>
                 </div>
-                <h3 className="font-semibold">{h.titulo}</h3>
+                <h3 className="font-bold">{h.titulo}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{h.desc}</p>
               </CardContent>
             </Card>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowDown,
   Users,
   HeartHandshake,
   Vote,
@@ -16,8 +17,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wordmark } from "@/components/marca";
+import { MarcaBar } from "@/components/marca";
+import { HeroMedia } from "@/components/landing/hero-media";
 import { getPerfilPublico } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
 const ENFOQUES = [
   { icon: MapPin, titulo: "Territorio y comunidad", desc: "Trabajo en barrios y localidades, con la gente y para la gente." },
@@ -35,27 +38,66 @@ const TRAYECTORIA = [
   { titulo: "Candidato a Cámara por Bogotá D.C.", desc: "Entorno del Pacto Histórico · Renglón 106.", tag: "Participación" },
 ];
 
+// Colores de marca para las fichas de enfoque (movimiento diverso y humano).
+const ENFOQUE_TONO = [
+  "bg-marca-morado",
+  "bg-marca-naranja",
+  "bg-marca-verde",
+  "bg-marca-azul",
+  "bg-marca-rojo",
+  "bg-marca-vinotinto",
+];
+
+/** Antetítulo de sección con la franja de marca. */
+function Eyebrow({
+  children,
+  tone = "light",
+}: {
+  children: React.ReactNode;
+  tone?: "light" | "dark";
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <MarcaBar className="h-1 w-10" />
+      <span
+        className={cn(
+          "text-xs font-bold uppercase tracking-[0.2em]",
+          tone === "dark" ? "text-accent" : "text-primary",
+        )}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const perfil = await getPerfilPublico();
 
   return (
     <>
       {/* ───────────── HERO ───────────── */}
-      <section className="relative overflow-hidden bg-marca-hero text-white">
-        <div className="container grid gap-10 py-16 md:grid-cols-2 md:py-24 md:items-center">
-          <div>
-            <Badge variant="accent" className="mb-4">
+      <section className="relative isolate overflow-hidden text-white">
+        <HeroMedia videoUrl={perfil.hero_video_url || "/hero.mp4"} />
+
+        <div className="container relative z-10 flex min-h-[86vh] flex-col justify-center py-24 md:min-h-[90vh]">
+          <div className="max-w-3xl motion-safe:animate-fade-up">
+            <Badge variant="accent" className="mb-5">
               {perfil.cargo_aspiracion} · Renglón {perfil.renglon}
             </Badge>
-            <h1 className="text-balance text-4xl font-black leading-tight sm:text-5xl">
+
+            <h1 className="text-balance text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl">
               {perfil.nombre}
             </h1>
-            <p className="mt-3 text-balance text-xl font-semibold text-accent">
+
+            <MarcaBar className="mt-6 h-1.5 w-56 max-w-full" />
+
+            <p className="mt-7 max-w-2xl text-balance text-2xl font-bold text-accent sm:text-3xl">
               {perfil.lema}
             </p>
-            <p className="mt-4 max-w-xl text-white/85">{perfil.subtitulo}</p>
+            <p className="mt-4 max-w-xl text-lg text-white/85">{perfil.subtitulo}</p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent">
                 <Link href="/participa">
                   Cuéntanos tu necesidad <ArrowRight className="size-4" />
@@ -69,47 +111,51 @@ export default async function HomePage() {
               </Button>
             </div>
 
-            <p className="mt-6 text-xs text-white/60">
+            <p className="mt-7 text-xs uppercase tracking-[0.2em] text-white/60">
               {perfil.movimiento}
             </p>
           </div>
+        </div>
 
-          <div className="relative">
-            <div className="mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 shadow-2xl">
-              {perfil.foto_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={perfil.foto_url} alt={perfil.nombre} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8 text-center text-white">
-                  <Wordmark size="lg" className="items-center" />
-                  <p className="text-sm text-white/70">
-                    [Foto oficial pendiente · editable desde el panel]
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Indicador de scroll */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center">
+          <span className="motion-safe:animate-bounce text-white/50">
+            <ArrowDown className="size-5" />
+          </span>
         </div>
       </section>
 
+      {/* Transición: franja de marca */}
+      <div className="h-1.5 w-full bg-franja" />
+
       {/* ───────────── ENFOQUES ───────────── */}
-      <section className="bg-muted/40 py-16">
+      <section className="bg-muted/40 py-20">
         <div className="container">
-          <div className="mb-10 max-w-2xl">
-            <h2 className="text-3xl font-bold">Nuestros enfoques</h2>
-            <p className="mt-2 text-muted-foreground">
-              Líneas de trabajo construidas desde la experiencia territorial y social.
+          <div className="mb-12 max-w-2xl">
+            <Eyebrow>Líneas de trabajo</Eyebrow>
+            <h2 className="text-3xl font-black sm:text-4xl">Nuestros enfoques</h2>
+            <p className="mt-3 text-muted-foreground">
+              Construidos desde la experiencia territorial y social: con la gente
+              y para la gente.
             </p>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {ENFOQUES.map(({ icon: Icon, titulo, desc }) => (
-              <Card key={titulo} className="transition-shadow hover:shadow-md">
+            {ENFOQUES.map(({ icon: Icon, titulo, desc }, i) => (
+              <Card
+                key={titulo}
+                className="group border-transparent shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              >
                 <CardContent className="p-6">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div
+                    className={cn(
+                      "mb-4 flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-sm transition-transform duration-300 group-hover:scale-110",
+                      ENFOQUE_TONO[i % ENFOQUE_TONO.length],
+                    )}
+                  >
                     <Icon className="size-6" />
                   </div>
-                  <h3 className="text-lg font-semibold">{titulo}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+                  <h3 className="text-lg font-bold">{titulo}</h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -118,30 +164,29 @@ export default async function HomePage() {
       </section>
 
       {/* ───────────── TRAYECTORIA ───────────── */}
-      <section className="py-16">
-        <div className="container grid gap-10 lg:grid-cols-2 lg:items-center">
+      <section className="py-20">
+        <div className="container grid gap-12 lg:grid-cols-2 lg:items-center">
           <div>
-            <Badge variant="secondary" className="mb-4">Trayectoria verificada</Badge>
-            <h2 className="text-3xl font-bold">Hechos, no promesas</h2>
+            <Eyebrow>Trayectoria verificada</Eyebrow>
+            <h2 className="text-3xl font-black sm:text-4xl">Hechos, no promesas</h2>
             <p className="mt-3 max-w-lg text-muted-foreground">
-              Presentamos una trayectoria pública basada en experiencia
-              territorial, social y comunitaria. La información se prioriza por
-              hechos verificables.
+              Una trayectoria pública basada en experiencia territorial, social y
+              comunitaria. La información se prioriza por hechos verificables.
             </p>
             <Button asChild variant="outline" className="mt-6">
               <Link href="/trayectoria">Ver trayectoria completa <ArrowRight className="size-4" /></Link>
             </Button>
           </div>
-          <ol className="relative space-y-6 border-l-2 border-primary/20 pl-6">
-            {TRAYECTORIA.map((item) => (
+          <ol className="relative space-y-5 border-l-2 border-primary/20 pl-8">
+            {TRAYECTORIA.map((item, i) => (
               <li key={item.titulo} className="relative">
-                <span className="absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-background">
-                  <span className="h-2 w-2 rounded-full bg-primary" />
+                <span className="absolute -left-[41px] flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-black text-primary-foreground shadow-sm">
+                  {i + 1}
                 </span>
-                <Card>
+                <Card className="shadow-sm transition-shadow hover:shadow-md">
                   <CardContent className="p-5">
                     <Badge variant="muted" className="mb-2">{item.tag}</Badge>
-                    <h3 className="font-semibold">{item.titulo}</h3>
+                    <h3 className="font-bold">{item.titulo}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{item.desc}</p>
                   </CardContent>
                 </Card>
@@ -152,11 +197,13 @@ export default async function HomePage() {
       </section>
 
       {/* ───────────── PARTICIPA (CTA) ───────────── */}
-      <section className="bg-secondary py-16 text-white">
-        <div className="container grid gap-8 md:grid-cols-3">
+      <section className="relative overflow-hidden bg-secondary py-20 text-white">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-marca-morado/30 blur-3xl" />
+        <div className="container relative grid gap-8 md:grid-cols-3">
           <div className="md:col-span-1">
-            <h2 className="text-3xl font-bold">Participa</h2>
-            <p className="mt-2 text-white/80">
+            <Eyebrow tone="dark">Suma tu voz</Eyebrow>
+            <h2 className="text-3xl font-black sm:text-4xl">Participa</h2>
+            <p className="mt-3 text-white/80">
               Tu voz organiza el trabajo en el territorio. Elige cómo sumarte.
             </p>
           </div>
@@ -170,10 +217,13 @@ export default async function HomePage() {
               <Link
                 key={label}
                 href={href}
-                className="group flex items-center justify-between rounded-2xl border border-white/15 bg-white/5 p-5 transition-colors hover:bg-white/10"
+                className="group flex items-center justify-between rounded-2xl border border-white/15 bg-white/5 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/10"
               >
                 <span className="flex items-center gap-3 font-medium">
-                  <Icon className="size-5 text-accent" /> {label}
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                    <Icon className="size-5" />
+                  </span>
+                  {label}
                 </span>
                 <ArrowRight className="size-4 opacity-60 transition-transform group-hover:translate-x-1" />
               </Link>
@@ -183,11 +233,12 @@ export default async function HomePage() {
       </section>
 
       {/* ───────────── CIERRE ───────────── */}
-      <section className="py-16">
+      <section className="py-20">
         <div className="container">
-          <Card className="overflow-hidden border-0 bg-marca-gradient text-white">
-            <CardContent className="flex flex-col items-center gap-4 p-10 text-center md:p-14">
-              <h2 className="text-balance text-3xl font-bold">
+          <Card className="overflow-hidden border-0 bg-marca-gradient text-white shadow-lg">
+            <CardContent className="flex flex-col items-center gap-5 p-10 text-center md:p-16">
+              <span className="h-1.5 w-24 rounded-full bg-white/70" />
+              <h2 className="text-balance text-3xl font-black sm:text-4xl">
                 Construyamos juntos, desde el territorio
               </h2>
               <p className="max-w-xl text-white/90">

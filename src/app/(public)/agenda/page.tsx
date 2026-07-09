@@ -3,6 +3,7 @@ import { CalendarDays, MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageIntro } from "@/components/landing/page-intro";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/database";
@@ -33,12 +34,11 @@ export default async function AgendaPage() {
 
   return (
     <div className="container max-w-4xl py-12 md:py-16">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold md:text-4xl">Agenda en territorio</h1>
-        <p className="mt-2 text-muted-foreground">
-          Recorridos, reuniones comunitarias y encuentros ciudadanos.
-        </p>
-      </header>
+      <PageIntro
+        eyebrow="En el territorio"
+        title="Agenda en territorio"
+        description="Recorridos, reuniones comunitarias y encuentros ciudadanos."
+      />
 
       {events.length === 0 ? (
         <Card className="border-dashed">
@@ -51,11 +51,11 @@ export default async function AgendaPage() {
       ) : (
         <div className="grid gap-4">
           {events.map((ev) => (
-            <Card key={ev.id}>
+            <Card key={ev.id} className="border-l-4 border-l-primary shadow-sm transition-shadow hover:shadow-md">
               <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <Badge variant="muted" className="mb-2">{ev.tipo}</Badge>
-                  <h3 className="font-semibold">{ev.titulo}</h3>
+                  <h3 className="font-bold">{ev.titulo}</h3>
                   {ev.descripcion && (
                     <p className="mt-1 text-sm text-muted-foreground">{ev.descripcion}</p>
                   )}

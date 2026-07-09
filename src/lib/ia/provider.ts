@@ -1,0 +1,111 @@
+import "server-only";
+
+/**
+ * Proveedor de chat con STREAMING (OpenAI-compatible). Elige DeepSeek u OpenAI
+ * según el modelo. Las llaves nunca se exponen al cliente.
+ */
+
+export type ChatRole = "system" | "user" | "assistant";
+
+/** Parte de contenido: texto o imagen (para modelos con visión). */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string | ContentPart[];
+}
+
+interface Resolved {
+  url: string;
+  key: string;
+  model: string;
+  name: "deepseek" | "openai";
+  vision: boolean;
+}
+
+/** Resuelve endpoint/llave/modelo. Lanza un Error legible si falta la llave. */
+export function resolveProvider(modelo: string): Resolved {
+  if (modelo.startsWith("gpt") || modelo.startsWith("o1") || modelo.startsWith("o3")) {
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) throw new Error("Falta OPENAI_API_KEY para usar este modelo.");
+    return { url: "https://api.openai.com/v1/chat/completions", key, model: modelo, name: "openai", vision: true };
+  }
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) throw new Error("Falta DEEPSEEK_API_KEY para usar este modelo.");
+  return {
+    url: "https://api.deepseek.com/chat/completions",
+    key,
+    model: modelo || "deepseek-chat",
+    name: "deepseek",
+    vision: false,
+  };
+}
+
+/** ¿El proveedor de un modelo tiene llave configurada? */
+export function providerAvailable(modelo: string): boolean {
+  try {
+    resolveProvider(modelo);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Llama al modelo con stream y devuelve un ReadableStream de TEXTO plano
+ * (solo el contenido incremental del asistente). Lanza si la API responde mal.
+ */
+export async function streamChat(modelo: string, messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>> {
+  const cfg = resolveProvider(modelo);
+
+  const res = await fetch(cfg.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+    body: JSON.stringify({ model: cfg.model, messages, stream: true, temperature: 0.6, max_tokens: 2000 }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`IA ${cfg.name} respondió ${res.status}: ${detail.slice(0, 200)}`);
+  }
+
+  const upstream = res.body.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await upstream.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // deja la línea incompleta en el buffer
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith("data:")) continue;
+        const payload = t.slice(5).trim();
+        if (payload === "[DONE]") {
+          controller.close();
+          return;
+        }
+        try {
+          const json = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+          const token = json.choices?.[0]?.delta?.content;
+          if (token) controller.enqueue(encoder.encode(token));
+        } catch {
+          /* fragmento SSE incompleto: ignorar */
+        }
+      }
+    },
+    cancel() {
+      upstream.cancel().catch(() => {});
+    },
+  });
+}

@@ -4,6 +4,7 @@ import { Newspaper } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageIntro } from "@/components/landing/page-intro";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import type { ContentPost } from "@/types/database";
@@ -35,10 +36,11 @@ export default async function NoticiasPage() {
 
   return (
     <div className="container py-12 md:py-16">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold md:text-4xl">Noticias y comunicados</h1>
-        <p className="mt-2 text-muted-foreground">Lo último del trabajo en el territorio.</p>
-      </header>
+      <PageIntro
+        eyebrow="Novedades"
+        title="Noticias y comunicados"
+        description="Lo último del trabajo en el territorio."
+      />
 
       {posts.length === 0 ? (
         <Card className="border-dashed">
@@ -50,14 +52,14 @@ export default async function NoticiasPage() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
-            <Card key={post.id} className="overflow-hidden transition-shadow hover:shadow-md">
+            <Card key={post.id} className="group overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
               {post.imagen_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={post.imagen_url} alt={post.titulo} className="h-44 w-full object-cover" />
+                <img src={post.imagen_url} alt={post.titulo} className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               )}
               <CardContent className="p-5">
                 {post.categoria && <Badge variant="muted" className="mb-2">{post.categoria}</Badge>}
-                <h3 className="font-semibold leading-snug">{post.titulo}</h3>
+                <h3 className="font-bold leading-snug">{post.titulo}</h3>
                 {post.resumen && (
                   <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.resumen}</p>
                 )}
