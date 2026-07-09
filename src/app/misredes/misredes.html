@@ -177,7 +177,8 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
 .coalicion span{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); }
 .foot{ text-align:center; font-size:11.5px; color:var(--faint); line-height:1.7; }
 .foot .place{ display:inline-flex; align-items:center; gap:5px; }
-.foot .gear{ display:inline-block; margin-top:12px; opacity:.28; cursor:pointer; transition:opacity .2s; background:none; border:none; color:var(--faint); }
+/* Edición centralizada en el dashboard (Configuración → Página /misredes). */
+.foot .gear{ display:none; margin-top:12px; opacity:.28; cursor:pointer; transition:opacity .2s; background:none; border:none; color:var(--faint); }
 .foot .gear:hover{ opacity:.7; }
 .foot .gear svg{ width:16px; height:16px; }
 
@@ -736,8 +737,7 @@ function renderAdminEditor(localMode){
   initSupa();
   const cfg=await loadConfig();
   render(cfg);
-  if(location.hash==='#admin') openAdmin();
-  window.addEventListener('hashchange',()=>{ if(location.hash==='#admin') openAdmin(); });
+  // La edición está centralizada en el dashboard (Configuración → Página /misredes).
 })();
 </script>
 </body>

@@ -24,6 +24,7 @@ import {
   Flag,
   User,
   Bot,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -103,6 +104,7 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/configuracion?tab=usuarios", label: "Usuarios", icon: Users, description: "Alta, roles y activación de usuarios del equipo." },
       { href: "/dashboard/configuracion?tab=roles", label: "Roles y permisos", icon: ShieldCheck, description: "Matriz de acceso por rol a cada módulo." },
       { href: "/dashboard/configuracion?tab=integraciones", label: "Integraciones", icon: HardDrive, description: "Conexión con Google Drive y otros servicios." },
+      { href: "/dashboard/configuracion?tab=misredes", label: "Página /misredes", icon: Link2, description: "Edita la página pública de enlaces (redes, WhatsApp, prensa, campaña)." },
     ],
   },
 ];
