@@ -6,25 +6,8 @@
 
 const svg = (s: string) => `data:image/svg+xml,${encodeURIComponent(s.replace(/\s+/g, " ").trim())}`;
 
-/** Logo oficial de Jairo (sticker magenta + nombre + barras del Pacto). */
-export const LOGO_JAIRO = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560">
-  <rect x="46" y="46" width="708" height="468" rx="98" fill="#a73194" stroke="#f6f0f5" stroke-width="10"/>
-  <text x="400" y="280" text-anchor="middle"
-        font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-        font-weight="900" font-size="188" letter-spacing="4" fill="#ffffff">JAIRO</text>
-  <text x="400" y="406" text-anchor="middle"
-        font-family="'Helvetica Neue',Arial,sans-serif"
-        font-weight="600" font-size="86" letter-spacing="6" fill="#ffffff">LEÓN VARGAS</text>
-  <g>
-    <rect x="158" y="452" width="88" height="16" rx="8" fill="#f2a03d"/>
-    <rect x="256" y="452" width="88" height="16" rx="8" fill="#2e3192"/>
-    <rect x="354" y="452" width="88" height="16" rx="8" fill="#e4322b"/>
-    <rect x="452" y="452" width="88" height="16" rx="8" fill="#10984e"/>
-    <rect x="550" y="452" width="88" height="16" rx="8" fill="#7a2e7e"/>
-  </g>
-</svg>
-`);
+/** Logo oficial de Jairo (imagen PNG con transparencia, en public/). */
+export const LOGO_JAIRO = "/misredes-logo.png";
 
 /** Marca coalición Pacto Histórico (barras + texto). */
 export const LOGO_PACTO = svg(`
