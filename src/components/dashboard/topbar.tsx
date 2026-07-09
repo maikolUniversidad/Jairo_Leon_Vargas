@@ -21,7 +21,7 @@ export function Topbar({
   avatarUrl?: string | null;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 pl-16 backdrop-blur lg:px-6 lg:pl-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur lg:px-6">
       <div>
         <p className="text-sm font-semibold leading-tight">{name ?? "Equipo UTL"}</p>
         {role && (

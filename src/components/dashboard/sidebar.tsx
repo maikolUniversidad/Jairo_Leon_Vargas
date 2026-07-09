@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { LogoJLV } from "@/components/marca";
@@ -12,13 +12,15 @@ import { DASHBOARD_NAV, type NavItem, type SubNavItem } from "./nav";
 export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const items = DASHBOARD_NAV.filter((i) => viewableModules.includes(i.module));
 
   const moduleActive = (item: NavItem) =>
     item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+
+  // Módulo activo (para la franja de submódulos en móvil).
+  const activeModule = items.find((i) => moduleActive(i));
 
   // Abre automáticamente el módulo cuya ruta está activa.
   useEffect(() => {
@@ -59,7 +61,6 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
             >
               <Link
                 href={item.href}
-                onClick={() => setOpen(false)}
                 className="flex flex-1 items-center gap-3 px-3 py-2.5 text-sm font-medium"
               >
                 <item.icon className="size-4 shrink-0" />
@@ -88,7 +89,6 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
                     <Link
                       key={sub.href}
                       href={sub.href}
-                      onClick={() => setOpen(false)}
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
                         on
@@ -111,16 +111,6 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
 
   return (
     <>
-      {/* Botón móvil */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed left-4 top-3 z-30 rounded-md bg-secondary p-2 text-white lg:hidden"
-        aria-label="Abrir menú"
-      >
-        <Menu className="size-5" />
-      </button>
-
       {/* Sidebar fijo desktop */}
       <aside className="hidden w-64 shrink-0 flex-col bg-secondary text-white lg:flex">
         <div className="h-1 w-full bg-franja" />
@@ -133,22 +123,59 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
         <div className="flex-1 overflow-y-auto">{nav}</div>
       </aside>
 
-      {/* Drawer móvil */}
-      {open && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-secondary text-white">
-            <div className="h-1 w-full bg-franja" />
-            <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
-              <LogoJLV className="h-9" />
-              <button onClick={() => setOpen(false)} aria-label="Cerrar">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">{nav}</div>
-          </aside>
+      {/* Móvil: franja de submódulos del módulo activo (scroll lateral) */}
+      {activeModule?.submodules?.length ? (
+        <div className="sticky top-16 z-20 border-b bg-background/95 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <span className="shrink-0 pr-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {activeModule.label}
+            </span>
+            {activeModule.submodules.map((sub) => {
+              const on = subActive(sub);
+              return (
+                <Link
+                  key={sub.href}
+                  href={sub.href}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors",
+                    on
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border bg-background text-foreground/70 hover:bg-muted",
+                  )}
+                >
+                  <sub.icon className="size-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{sub.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      )}
+      ) : null}
+
+      {/* Móvil: barra de módulos inferior (scroll lateral) */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-secondary text-white lg:hidden">
+        <div className="h-0.5 w-full bg-franja" />
+        <div className="flex items-stretch gap-1 overflow-x-auto px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map((item) => {
+            const active = moduleActive(item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex min-w-[68px] shrink-0 flex-col items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-white/80 hover:bg-white/10 hover:text-white",
+                )}
+              >
+                <item.icon className="size-5 shrink-0" />
+                <span className="whitespace-nowrap">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }

@@ -21,7 +21,7 @@ export default async function DashboardLayout({
           role={user.primaryRole}
           avatarUrl={user.profile?.avatar_url ?? null}
         />
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 pb-24 lg:p-6 lg:pb-6">{children}</main>
       </div>
       <LocationTracker />
     </div>
