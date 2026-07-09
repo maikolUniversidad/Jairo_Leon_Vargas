@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowDown,
   Users,
   HeartHandshake,
   Vote,
@@ -16,7 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wordmark } from "@/components/marca";
+import { MarcaBar } from "@/components/marca";
+import { HeroMedia } from "@/components/landing/hero-media";
 import { getPerfilPublico } from "@/lib/settings";
 
 const ENFOQUES = [
@@ -41,21 +43,27 @@ export default async function HomePage() {
   return (
     <>
       {/* ───────────── HERO ───────────── */}
-      <section className="relative overflow-hidden bg-marca-hero text-white">
-        <div className="container grid gap-10 py-16 md:grid-cols-2 md:py-24 md:items-center">
-          <div>
-            <Badge variant="accent" className="mb-4">
+      <section className="relative isolate overflow-hidden text-white">
+        <HeroMedia videoUrl={perfil.hero_video_url || "/hero.mp4"} />
+
+        <div className="container relative z-10 flex min-h-[86vh] flex-col justify-center py-24 md:min-h-[90vh]">
+          <div className="max-w-3xl motion-safe:animate-fade-up">
+            <Badge variant="accent" className="mb-5">
               {perfil.cargo_aspiracion} · Renglón {perfil.renglon}
             </Badge>
-            <h1 className="text-balance text-4xl font-black leading-tight sm:text-5xl">
+
+            <h1 className="text-balance text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl">
               {perfil.nombre}
             </h1>
-            <p className="mt-3 text-balance text-xl font-semibold text-accent">
+
+            <MarcaBar className="mt-6 h-1.5 w-56 max-w-full" />
+
+            <p className="mt-7 max-w-2xl text-balance text-2xl font-bold text-accent sm:text-3xl">
               {perfil.lema}
             </p>
-            <p className="mt-4 max-w-xl text-white/85">{perfil.subtitulo}</p>
+            <p className="mt-4 max-w-xl text-lg text-white/85">{perfil.subtitulo}</p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent">
                 <Link href="/participa">
                   Cuéntanos tu necesidad <ArrowRight className="size-4" />
@@ -69,26 +77,17 @@ export default async function HomePage() {
               </Button>
             </div>
 
-            <p className="mt-6 text-xs text-white/60">
+            <p className="mt-7 text-xs uppercase tracking-[0.2em] text-white/60">
               {perfil.movimiento}
             </p>
           </div>
+        </div>
 
-          <div className="relative">
-            <div className="mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 shadow-2xl">
-              {perfil.foto_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={perfil.foto_url} alt={perfil.nombre} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-8 text-center text-white">
-                  <Wordmark size="lg" className="items-center" />
-                  <p className="text-sm text-white/70">
-                    [Foto oficial pendiente · editable desde el panel]
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Indicador de scroll */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center">
+          <span className="motion-safe:animate-bounce text-white/50">
+            <ArrowDown className="size-5" />
+          </span>
         </div>
       </section>
 

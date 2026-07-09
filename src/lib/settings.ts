@@ -9,6 +9,8 @@ export interface PerfilPublico {
   subtitulo: string;
   biografia_corta: string;
   foto_url: string;
+  /** Video de fondo (difuminado) para el intro. Vacío → fondo ambiente animado. */
+  hero_video_url: string;
   redes: {
     facebook?: string;
     instagram?: string;
@@ -30,6 +32,7 @@ export const PERFIL_DEFAULT: PerfilPublico = {
   biografia_corta:
     "Trayectoria pública con experiencia territorial y social en Bogotá y en programas de articulación de oferta social.",
   foto_url: "",
+  hero_video_url: "",
   redes: {},
 };
 
