@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PriorityBadge } from "@/lib/status";
+import { useTabParam } from "@/hooks/use-tab-param";
 import { cn } from "@/lib/utils";
 import { LOCALIDADES } from "@/lib/validations";
 import { GEO_SOURCES, normalizeName, type GeoLayerSource } from "@/lib/geo-sources";
@@ -53,21 +54,22 @@ const TABS: { key: string; source: GeoLayerSource }[] = [
   { key: "colombia_departamentos", source: GEO_SOURCES.colombia_departamentos },
 ];
 
+const CAPA_KEYS = TABS.map((t) => t.key) as [string, ...string[]];
+
 export function TerritorioExplorer({
   zones,
   taskCounts,
   profiles,
   canManage,
-  initialCapa,
 }: {
   zones: Zone[];
   taskCounts: Record<string, number>;
   profiles: Persona[];
   canManage: boolean;
-  initialCapa?: string;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState(TABS.find((t) => t.key === initialCapa) ?? TABS[0]!);
+  const [capa, setCapa] = useTabParam("capa", CAPA_KEYS[0], CAPA_KEYS);
+  const tab = TABS.find((t) => t.key === capa) ?? TABS[0]!;
   const [selected, setSelected] = useState<{ name: string; code: string | null; tipo: GeoLayerSource["tipo"] } | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [, start] = useTransition();
@@ -116,7 +118,7 @@ export function TerritorioExplorer({
               key={t.key}
               size="sm"
               variant={tab.key === t.key ? "default" : "outline"}
-              onClick={() => setTab(t)}
+              onClick={() => setCapa(t.key)}
             >
               {t.source.label}
             </Button>

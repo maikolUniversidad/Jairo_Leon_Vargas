@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 import { Inbox, ListChecks, Users, CalendarDays, Contact, FileText, Download, User } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTabParam } from "@/hooks/use-tab-param";
 import { formatDate } from "@/lib/utils";
 import { downloadCsv } from "@/lib/csv";
 import {
@@ -63,12 +63,11 @@ function Breakdown({ title, counts, csv }: { title: string; counts: Counts; csv:
 export function ReportesView({
   general,
   users,
-  initialTab = "general",
 }: {
   general: GeneralReport;
   users: PersonOption[];
-  initialTab?: "general" | "persona";
 }) {
+  const [tab, setTab] = useTabParam<"general" | "persona">("vista", "general", ["general", "persona"]);
   const [userId, setUserId] = useState("");
   const [report, setReport] = useState<PersonReport | null>(null);
   const [pending, start] = useTransition();
@@ -82,7 +81,7 @@ export function ReportesView({
   const userName = users.find((u) => u.id === userId)?.full_name ?? "persona";
 
   return (
-    <Tabs defaultValue={initialTab}>
+    <Tabs value={tab} onValueChange={(v) => setTab(v as "general" | "persona")}>
       <TabsList>
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="persona">Por persona</TabsTrigger>

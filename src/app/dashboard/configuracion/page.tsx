@@ -2,7 +2,8 @@ import { Suspense } from "react";
 
 import { requireRole } from "@/lib/auth";
 import { PageHeader } from "@/components/dashboard/shared";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
+import { ConfiguracionTabs } from "@/components/dashboard/configuracion-tabs";
 import { UsuariosManager } from "@/components/dashboard/usuarios-manager";
 import { RolesManager } from "@/components/dashboard/roles-manager";
 import { GoogleDriveCard } from "@/components/dashboard/google-drive-card";
@@ -16,17 +17,12 @@ import { listConnections } from "@/actions/conexiones";
 import { getMisredesConfig } from "@/actions/misredes";
 import { listKbDocuments, listKbConcepts, getKbStats } from "@/actions/conocimiento";
 
-export default async function ConfiguracionPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function ConfiguracionPage() {
   // Solo admins (defensa adicional a RLS).
   await requireRole(["super_admin", "administrador"]);
 
-  const [{ tab }, users, roles, permissions, driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats] =
+  const [users, roles, permissions, driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats] =
     await Promise.all([
-      searchParams,
       listUsers(),
       listRoles(),
       listPermissions(),
@@ -38,10 +34,6 @@ export default async function ConfiguracionPage({
       getKbStats(),
     ]);
 
-  const activeTab = ["usuarios", "roles", "integraciones", "conocimiento", "misredes"].includes(tab ?? "")
-    ? (tab as string)
-    : "usuarios";
-
   return (
     <>
       <PageHeader
@@ -49,14 +41,7 @@ export default async function ConfiguracionPage({
         description="Gestiona usuarios, roles y permisos del sistema."
       />
 
-      <Tabs defaultValue={activeTab}>
-        <TabsList>
-          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
-          <TabsTrigger value="roles">Roles y permisos</TabsTrigger>
-          <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
-          <TabsTrigger value="conocimiento">Base de conocimiento</TabsTrigger>
-          <TabsTrigger value="misredes">Página /misredes</TabsTrigger>
-        </TabsList>
+      <ConfiguracionTabs>
         <TabsContent value="usuarios">
           <UsuariosManager users={users} roles={roles} />
         </TabsContent>
@@ -75,7 +60,7 @@ export default async function ConfiguracionPage({
         <TabsContent value="misredes">
           <MisredesManager initial={misredes} />
         </TabsContent>
-      </Tabs>
+      </ConfiguracionTabs>
     </>
   );
 }

@@ -7,13 +7,8 @@ import type { Zone, Profile } from "@/types/database";
 
 const MANAGER_ROLES: AppRole[] = ["super_admin", "administrador", "coordinador_territorial", "coordinador_utl"];
 
-export default async function TerritorioPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ capa?: string }>;
-}) {
-  const [{ capa }, user, supabase] = await Promise.all([
-    searchParams,
+export default async function TerritorioPage() {
+  const [user, supabase] = await Promise.all([
     getSessionUser(),
     createClient(),
   ]);
@@ -48,7 +43,6 @@ export default async function TerritorioPage({
         taskCounts={taskCounts}
         profiles={(profiles as Pick<Profile, "id" | "full_name" | "email">[]) ?? []}
         canManage={canManage}
-        initialCapa={capa}
       />
     </>
   );

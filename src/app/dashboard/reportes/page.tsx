@@ -3,11 +3,7 @@ import { PageHeader } from "@/components/dashboard/shared";
 import { ReportesView } from "@/components/dashboard/reportes-view";
 import { getGeneralReport, listReportUsers } from "@/actions/reportes";
 
-export default async function ReportesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ vista?: string }>;
-}) {
+export default async function ReportesPage() {
   await requireRole([
     "super_admin",
     "administrador",
@@ -16,12 +12,10 @@ export default async function ReportesPage({
     "analitica_reportes",
   ]);
 
-  const [{ vista }, general, users] = await Promise.all([
-    searchParams,
+  const [general, users] = await Promise.all([
     getGeneralReport(),
     listReportUsers(),
   ]);
-  const initialTab = vista === "persona" ? "persona" : "general";
 
   return (
     <>
@@ -29,7 +23,7 @@ export default async function ReportesPage({
         title="Reportes"
         description="Indicadores de la operación y reportes individuales por persona. Exporta a CSV."
       />
-      <ReportesView general={general} users={users} initialTab={initialTab} />
+      <ReportesView general={general} users={users} />
     </>
   );
 }
