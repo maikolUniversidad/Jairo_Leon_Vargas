@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { Topbar } from "@/components/dashboard/topbar";
 import { LocationTracker } from "@/components/dashboard/location-tracker";
 
@@ -21,6 +22,7 @@ export default async function DashboardLayout({
           role={user.primaryRole}
           avatarUrl={user.profile?.avatar_url ?? null}
         />
+        <MobileNav viewableModules={user.viewableModules} />
         <main className="flex-1 p-4 pb-24 lg:p-6 lg:pb-6">{children}</main>
       </div>
       <LocationTracker />

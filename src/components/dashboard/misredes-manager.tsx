@@ -231,7 +231,7 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
         ))}
       </Section>
 
-      <div className="sticky bottom-4 flex justify-end">
+      <div className="sticky bottom-20 flex justify-end lg:bottom-4">
         <Button onClick={save} disabled={pending} className="shadow-lg">
           <Save className="size-4" /> {pending ? "Guardando…" : "Guardar y publicar"}
         </Button>
