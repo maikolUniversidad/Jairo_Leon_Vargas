@@ -1,8 +1,14 @@
 # Módulo Galería de fotos — Diseño
 
+> ⚠️ **OBSOLETO — superado por
+> [`2026-07-09-galeria-contenido-unificado-design.md`](2026-07-09-galeria-contenido-unificado-design.md).**
+> Aquel diseño (galería unificada por etiquetas + videos + auto-sync de redes, gestionada
+> desde Configuración) reemplaza este enfoque de álbumes por evento + módulo top-level.
+> Se conserva solo como referencia histórica.
+
 **Fecha:** 2026-07-09
 **Proyecto:** UTL 360 (Jairo León Vargas — Landing/Plataforma)
-**Estado:** Aprobado para planificación
+**Estado:** Obsoleto (reemplazado)
 
 ## Objetivo
 
