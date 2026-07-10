@@ -27,23 +27,74 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
   background:var(--ink); min-height:100dvh; overflow-x:hidden; line-height:1.5; position:relative;
   padding:max(22px,env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom)); }
 
-/* Aurora */
-.aurora{ position:fixed; inset:-25%; z-index:-3; filter:blur(72px); opacity:.82; }
-.blob{ position:absolute; border-radius:50%; mix-blend-mode:screen; will-change:transform; }
-.b1{ width:60vw; height:60vw; background:var(--brand); top:-8%; left:-12%; animation:drift1 21s ease-in-out infinite; }
-.b2{ width:66vw; height:66vw; background:var(--c5); top:16%; right:-20%; animation:drift2 27s ease-in-out infinite; }
-.b3{ width:52vw; height:52vw; background:var(--brand-glow); bottom:-6%; left:6%; animation:drift3 24s ease-in-out infinite; }
-.b4{ width:32vw; height:32vw; background:var(--c1); top:46%; left:40%; opacity:.4; animation:drift1 32s ease-in-out infinite reverse; }
-@keyframes drift1{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(6vw,5vw) scale(1.12)} }
-@keyframes drift2{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-7vw,4vw) scale(1.08)} }
-@keyframes drift3{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(4vw,-6vw) scale(1.15)} }
-.grain{ position:fixed; inset:0; z-index:-2; pointer-events:none; opacity:.05;
+/* ── Fondo fluido (ondas moradas) ── */
+body{ background:#5b1a72; }
+
+/* Filtro gooey: convierte blobs en ondas orgánicas */
+.fluid-bg{
+  position:fixed; inset:0; z-index:-3; overflow:hidden;
+  filter:url(#goo) blur(0px);
+}
+.fluid-bg svg.defs{ position:absolute; width:0; height:0; }
+.fluid-bg .layer{
+  position:absolute; inset:0;
+  filter:blur(48px);
+  opacity:1;
+}
+.blob{ position:absolute; border-radius:50%; will-change:transform; }
+/* onda 1 – morado medio */
+.b1{ width:80vw; height:80vw; background:#8b2fa0; top:-20%; left:-25%;
+  animation:w1 18s ease-in-out infinite; }
+/* onda 2 – morado oscuro */
+.b2{ width:90vw; height:70vw; background:#6a1e88; top:10%; right:-30%;
+  animation:w2 22s ease-in-out infinite; }
+/* onda 3 – magenta */
+.b3{ width:70vw; height:90vw; background:#a73194; bottom:-20%; left:-10%;
+  animation:w3 26s ease-in-out infinite; }
+/* onda 4 – lila claro para brillo */
+.b4{ width:55vw; height:55vw; background:#c04db8; top:35%; left:15%;
+  animation:w1 32s ease-in-out infinite reverse; }
+/* onda 5 – oscuro base */
+.b5{ width:75vw; height:60vw; background:#4a1265; bottom:5%; right:-15%;
+  animation:w2 28s ease-in-out infinite reverse; }
+
+@keyframes w1{
+  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
+  33%{     transform:translate(8vw,12vw) scale(1.15) rotate(8deg); }
+  66%{     transform:translate(-5vw,6vw) scale(.92) rotate(-5deg); }
+}
+@keyframes w2{
+  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
+  40%{     transform:translate(-10vw,-8vw) scale(1.12) rotate(-10deg); }
+  70%{     transform:translate(6vw,10vw) scale(.95) rotate(6deg); }
+}
+@keyframes w3{
+  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
+  50%{     transform:translate(5vw,-10vw) scale(1.18) rotate(12deg); }
+}
+
+/* ── Hemiciclo tenue ── */
+.hemiciclo{
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  z-index:-2; width:min(500px,100vw); opacity:.14;
+  pointer-events:none; user-select:none;
+  animation:hemAnim 60s linear infinite;
+}
+@keyframes hemAnim{
+  0%,100%{ opacity:.12; transform:translateX(-50%) scale(1); }
+  50%{     opacity:.18; transform:translateX(-50%) scale(1.04); }
+}
+
+.grain{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.06;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .vignette{ position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:radial-gradient(120% 80% at 50% 0%, transparent 55%, rgba(8,2,12,.55) 100%); }
+  background:radial-gradient(120% 80% at 50% 0%, transparent 45%, rgba(40,5,55,.65) 100%); }
 .spotlight{ position:fixed; z-index:0; pointer-events:none; width:520px; height:520px; left:0; top:0;
   transform:translate(-50%,-50%); opacity:0; transition:opacity .4s;
-  background:radial-gradient(circle, rgba(201,79,180,.12), transparent 60%); }
+  background:radial-gradient(circle, rgba(201,79,180,.14), transparent 60%); }
+
+/* Aurora — se mantiene para compat. con JS existente (sin efecto visual) */
+.aurora{ display:none; }
 
 .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; position:relative; z-index:2; }
 .reveal{ opacity:0; transform:translateY(18px); animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
@@ -241,7 +292,80 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
 </head>
 <body>
 
-<div class="aurora"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span></div>
+<!-- Fondo fluido animado -->
+<div class="fluid-bg">
+  <div class="layer">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+    <span class="blob b4"></span>
+    <span class="blob b5"></span>
+  </div>
+</div>
+
+<!-- Hemiciclo (Cámara de Representantes) tenue de fondo -->
+<svg class="hemiciclo" viewBox="0 0 500 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <!-- Pared curva del fondo / escenario -->
+  <path d="M60 290 Q250 60 440 290" stroke="white" stroke-width="1.5" fill="none"/>
+  <!-- Tarima / podio central -->
+  <rect x="205" y="248" width="90" height="18" rx="3" stroke="white" stroke-width="1.2" fill="none"/>
+  <rect x="220" y="238" width="60" height="12" rx="2" stroke="white" stroke-width="1" fill="none"/>
+  <!-- Micrófonos en podio -->
+  <line x1="250" y1="238" x2="250" y2="222" stroke="white" stroke-width="1"/>
+  <circle cx="250" cy="220" r="3" stroke="white" stroke-width="1" fill="none"/>
+  <!-- Pantallas laterales -->
+  <rect x="82" y="195" width="48" height="32" rx="3" stroke="white" stroke-width="1.2" fill="none"/>
+  <rect x="370" y="195" width="48" height="32" rx="3" stroke="white" stroke-width="1.2" fill="none"/>
+  <!-- Banderas laterales -->
+  <line x1="100" y1="160" x2="100" y2="200" stroke="white" stroke-width="1.2"/>
+  <path d="M100 160 L125 170 L100 180" stroke="white" stroke-width="1" fill="none"/>
+  <line x1="400" y1="160" x2="400" y2="200" stroke="white" stroke-width="1.2"/>
+  <path d="M400 160 L375 170 L400 180" stroke="white" stroke-width="1" fill="none"/>
+  <!-- Filas de escaños semicirculares -->
+  <!-- Fila 1 (más cercana al podio) -->
+  <path d="M148 268 Q250 210 352 268" stroke="white" stroke-width="1" fill="none" stroke-dasharray="4 5"/>
+  <!-- Fila 2 -->
+  <path d="M118 278 Q250 200 382 278" stroke="white" stroke-width="1" fill="none" stroke-dasharray="4 5"/>
+  <!-- Fila 3 -->
+  <path d="M90 286 Q250 192 410 286" stroke="white" stroke-width="1" fill="none" stroke-dasharray="4 5"/>
+  <!-- Pasillos radiales -->
+  <line x1="148" y1="268" x2="118" y2="278" stroke="white" stroke-width=".6" opacity=".6"/>
+  <line x1="200" y1="237" x2="172" y2="254" stroke="white" stroke-width=".6" opacity=".6"/>
+  <line x1="250" y1="226" x2="250" y2="268" stroke="white" stroke-width=".6" opacity=".6"/>
+  <line x1="300" y1="237" x2="328" y2="254" stroke="white" stroke-width=".6" opacity=".6"/>
+  <line x1="352" y1="268" x2="382" y2="278" stroke="white" stroke-width=".6" opacity=".6"/>
+  <!-- Escaños individuales (puntos) -->
+  <g opacity=".7">
+    <!-- Fila 1 escaños -->
+    <circle cx="167" cy="262" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="193" cy="247" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="221" cy="237" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="250" cy="234" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="279" cy="237" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="307" cy="247" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="333" cy="262" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <!-- Fila 2 escaños -->
+    <circle cx="140" cy="274" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="172" cy="257" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="207" cy="245" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="250" cy="241" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="293" cy="245" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="328" cy="257" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="360" cy="274" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <!-- Fila 3 escaños -->
+    <circle cx="112" cy="283" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="148" cy="268" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="187" cy="254" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="228" cy="246" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="250" cy="244" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="272" cy="246" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="313" cy="254" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="352" cy="268" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+    <circle cx="388" cy="283" r="2.5" stroke="white" stroke-width="1" fill="none"/>
+  </g>
+</svg>
+
+<div class="aurora"></div><!-- compat JS -->
 <div class="grain"></div>
 <div class="vignette"></div>
 <div class="spotlight" id="spotlight"></div>
