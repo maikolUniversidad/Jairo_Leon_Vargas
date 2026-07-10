@@ -36,14 +36,15 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
    ══════════════════════════════════════════════════════ */
 body{ background:#8a289a; }
 
-/* ── Imagen de fondo real (móvil) ── */
+/* ── Imagen de fondo real (móvil) — div fijo, no background:fixed (iOS no lo soporta) ── */
+.bg-mobile{
+  display:none;
+  position:fixed; inset:0; z-index:-4;
+  background:#8a289a url('/Fondo mis redes.jpeg') center center / cover no-repeat;
+}
 @media(max-width:768px){
-  body{
-    background:#8a289a url('/Fondo mis redes.jpeg') center center / cover no-repeat fixed;
-  }
-  /* En móvil ocultamos las ondas CSS y el hemiciclo SVG (ya vienen en la imagen) */
-  .wave-bg,
-  .hemiciclo{ display:none !important; }
+  .bg-mobile{ display:block; }
+  .wave-bg, .hemiciclo{ display:none !important; }
 }
 
 /* Contenedor fijo pantalla completa */
@@ -394,6 +395,9 @@ body{ background:#8a289a; }
 </style>
 </head>
 <body>
+
+<!-- Fondo imagen real (solo móvil, position:fixed — background-attachment:fixed no funciona en iOS) -->
+<div class="bg-mobile"></div>
 
 <!-- Fondo ondas líquidas -->
 <div class="wave-bg">
