@@ -230,6 +230,29 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ───────────── ESCENA 2: HISTORIA PERSONAL ───────────── */}
+      <div className="h-1.5 w-full bg-franja" />
+      <ScrollVideoScene
+        videoSrcPortrait="/Escenas transicion/transicion-2.mp4"
+        scrollMultiplier={3}
+        keyframes={[
+          {
+            at: 0,
+            title: "Desde niño vi los dolores de mi pueblo",
+          },
+          {
+            at: 0.5,
+            title: "La realidad de nuestra sociedad me marcó",
+            subtitle: "Y decidí hacer algo al respecto",
+          },
+          {
+            at: 1,
+            title: "Estudié para servir al pueblo",
+            subtitle: "Porque el conocimiento sin compromiso social no sirve",
+          },
+        ]}
+      />
+
       {/* ───────────── TRAYECTORIA ───────────── */}
       <section className="py-20">
         <div className="container grid gap-12 lg:grid-cols-2 lg:items-center">

@@ -3,21 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 
 export interface SceneKeyframe {
-  /** Posición normalizada [0,1] en la duración del video */
   at: number;
   title: string;
   subtitle?: string;
-  /** Ruta del audio a reproducir al entrar en este keyframe */
   audioUrl?: string;
 }
 
 interface ScrollVideoSceneProps {
-  /** Video principal (portrait / móvil) */
   videoSrcPortrait: string;
-  /** Video alternativo (landscape / escritorio). Usa el portrait si no se pasa. */
   videoSrcLandscape?: string;
   keyframes?: SceneKeyframe[];
-  /** Cuántos viewports ocupa el área de scroll (default 3) */
   scrollMultiplier?: number;
 }
 
@@ -38,10 +33,10 @@ export function ScrollVideoScene({
   scrollMultiplier = 3,
 }: ScrollVideoSceneProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const videoRef  = useRef<HTMLVideoElement>(null);
+  const videoRef   = useRef<HTMLVideoElement>(null);
 
-  /* Progreso objetivo — actualizado desde scroll, leído en RAF */
   const targetProgress = useRef(0);
+  const lastProgress   = useRef(-1);       // ← detectar cambio real
   const rafId          = useRef<number>(0);
   const lastKfAt       = useRef<number | null>(null);
   const audioRef       = useRef<HTMLAudioElement | null>(null);
@@ -49,24 +44,31 @@ export function ScrollVideoScene({
   const [activeKf,  setActiveKf]  = useState<SceneKeyframe | null>(null);
   const [kfVisible, setKfVisible] = useState(false);
 
-  /* ─── RAF loop: el único lugar donde se toca currentTime ─── */
+  /* ─── RAF loop: solo actualiza currentTime cuando el progreso cambió ─── */
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    video.load();
+
     const tick = () => {
       rafId.current = requestAnimationFrame(tick);
       if (!video.duration) return;
-      video.currentTime = targetProgress.current * video.duration;
+
+      const p = targetProgress.current;
+      // Evita actualizar si no hubo cambio (≥0.1 ms de video = ~0.00001 en escala)
+      if (Math.abs(p - lastProgress.current) < 0.0001) return;
+      lastProgress.current = p;
+
+      // Nunca setear exactamente duration — algunos browsers lo tratan como "ended"
+      video.currentTime = Math.min(p * video.duration, video.duration - 0.04);
     };
 
-    /* Activa el video para iOS (requiere interacción o carga previa) */
-    video.load();
     rafId.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId.current);
   }, []);
 
-  /* ─── Scroll: solo actualiza targetProgress y estado UI ─── */
+  /* ─── Scroll: solo escribe targetProgress, cero DOM ─── */
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
@@ -79,6 +81,7 @@ export function ScrollVideoScene({
       const wh   = window.innerHeight;
       if (rect.top >= wh || rect.bottom <= 0) return;
 
+      // El scroll "útil" empieza cuando rect.top < 0 y termina cuando rect.bottom = wh
       const total   = rect.height - wh;
       const scrolled = Math.max(0, -rect.top);
       const p        = Math.min(1, scrolled / total);
@@ -95,9 +98,9 @@ export function ScrollVideoScene({
           lastKfAt.current = hit.at;
           if (hit.audioUrl) {
             audioRef.current?.pause();
-            const audio = new Audio(hit.audioUrl);
-            audioRef.current = audio;
-            audio.play().catch(() => {});
+            const a = new Audio(hit.audioUrl);
+            audioRef.current = a;
+            a.play().catch(() => {});
           }
         }
         setActiveKf(hit);
@@ -113,7 +116,7 @@ export function ScrollVideoScene({
     return () => window.removeEventListener("scroll", onScroll);
   }, [keyframes]);
 
-  /* ─── Cambio portrait ↔ landscape al rotar ─── */
+  /* ─── Rotación portrait ↔ landscape ─── */
   useEffect(() => {
     if (!videoSrcLandscape) return;
     const video = videoRef.current;
@@ -135,9 +138,10 @@ export function ScrollVideoScene({
     return () => window.removeEventListener("resize", onOrient);
   }, [videoSrcPortrait, videoSrcLandscape]);
 
-  const src = (typeof window !== "undefined" && !isPortrait() && videoSrcLandscape)
-    ? videoSrcLandscape
-    : videoSrcPortrait;
+  const initialSrc =
+    typeof window !== "undefined" && !isPortrait() && videoSrcLandscape
+      ? videoSrcLandscape
+      : videoSrcPortrait;
 
   return (
     <div
@@ -145,26 +149,22 @@ export function ScrollVideoScene({
       className="relative w-full"
       style={{ height: `${scrollMultiplier * 100}vh` }}
     >
-      {/* Zona sticky: ocupa 100vh mientras el usuario scrollea por el wrapper */}
       <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-black">
-
-        {/* Video nativo — object-cover se encarga del recorte en cualquier ratio */}
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
-          src={src}
+          src={initialSrc}
           muted
           playsInline
           preload="auto"
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ willChange: "contents" }}
         />
 
-        {/* Overlay texto en keyframes */}
+        {/* Overlay texto */}
         <div
           aria-live="polite"
           className={[
-            "pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-5 text-center",
+            "pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center",
             "transition-opacity duration-700",
             kfVisible && activeKf ? "opacity-100" : "opacity-0",
           ].join(" ")}
@@ -172,15 +172,15 @@ export function ScrollVideoScene({
           {activeKf && (
             <div className="max-w-lg">
               <h2
-                className="text-balance text-3xl font-black text-white sm:text-4xl md:text-5xl lg:text-6xl"
-                style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.6)" }}
+                className="text-balance text-3xl font-black text-white sm:text-4xl md:text-5xl"
+                style={{ textShadow: "0 2px 24px rgba(0,0,0,0.95), 0 0 48px rgba(0,0,0,0.7)" }}
               >
                 {activeKf.title}
               </h2>
               {activeKf.subtitle && (
                 <p
-                  className="mt-3 text-base font-semibold text-white/90 sm:text-lg md:text-xl"
-                  style={{ textShadow: "0 1px 10px rgba(0,0,0,0.8)" }}
+                  className="mt-3 text-base font-semibold text-white/90 sm:text-lg"
+                  style={{ textShadow: "0 1px 12px rgba(0,0,0,0.85)" }}
                 >
                   {activeKf.subtitle}
                 </p>
@@ -189,8 +189,7 @@ export function ScrollVideoScene({
           )}
         </div>
 
-        {/* Gradientes de borde para fusionar con las secciones adyacentes */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-background/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-background/70 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </div>
     </div>
