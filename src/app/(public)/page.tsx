@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarcaBar } from "@/components/marca";
 import { HeroMedia } from "@/components/landing/hero-media";
+import { ScrollVideoScene } from "@/components/landing/scroll-video-scene";
 import { getPerfilPublico } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
@@ -175,6 +176,24 @@ export default async function HomePage() {
 
       {/* Transición: franja de marca */}
       <div className="h-1.5 w-full bg-franja" />
+
+      {/* ───────────── ESCENA DE TRANSICIÓN CON SCROLL ───────────── */}
+      <ScrollVideoScene
+        videoSrcPortrait="/Escenas transicion/transicion-1.mp4"
+        scrollMultiplier={3}
+        keyframes={[
+          {
+            at: 0,
+            title: "Una historia de territorio",
+            subtitle: "Desde los barrios de Bogotá",
+          },
+          {
+            at: 1,
+            title: "Construyendo juntos",
+            subtitle: "Con la gente y para la gente",
+          },
+        ]}
+      />
 
       {/* ───────────── ENFOQUES ───────────── */}
       <section className="bg-muted/40 py-20">
