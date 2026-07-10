@@ -238,17 +238,17 @@ export default async function HomePage() {
         keyframes={[
           {
             at: 0,
-            title: "Desde niño vi los dolores de mi pueblo",
+            title: "Desde niño vi los dolores de mi gente",
           },
           {
             at: 0.5,
-            title: "La realidad de nuestra sociedad me marcó",
-            subtitle: "Y decidí hacer algo al respecto",
+            title: "Siempre estuve cerca de lo que le dolía a mi pueblo",
+            subtitle: "Filas interminables para alcanzar un poco más de salud",
           },
           {
             at: 1,
-            title: "Estudié para servir al pueblo",
-            subtitle: "Porque el conocimiento sin compromiso social no sirve",
+            title: "Del niño en la loma a caminar junto a quienes esperan",
+            subtitle: "Porque su dolor también es el mío",
           },
         ]}
       />
