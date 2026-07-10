@@ -36,6 +36,16 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
    ══════════════════════════════════════════════════════ */
 body{ background:#8a289a; }
 
+/* ── Imagen de fondo real (móvil) ── */
+@media(max-width:768px){
+  body{
+    background:#8a289a url('/Fondo mis redes.jpeg') center center / cover no-repeat fixed;
+  }
+  /* En móvil ocultamos las ondas CSS y el hemiciclo SVG (ya vienen en la imagen) */
+  .wave-bg,
+  .hemiciclo{ display:none !important; }
+}
+
 /* Contenedor fijo pantalla completa */
 .wave-bg{
   position:fixed; inset:0; z-index:-3; overflow:hidden;
