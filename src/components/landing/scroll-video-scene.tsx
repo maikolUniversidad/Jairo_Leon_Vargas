@@ -26,25 +26,48 @@ function isPortrait() {
   return window.innerHeight >= window.innerWidth;
 }
 
+/* Factor de lerp: 1 = instantáneo, 0.1 = muy suave con lag.
+   0.18 da fluidez sin lag perceptible en scroll normal. */
+const LERP = 0.18;
+
 export function ScrollVideoScene({
   videoSrcPortrait,
   videoSrcLandscape,
   keyframes = DEFAULT_KEYFRAMES,
   scrollMultiplier = 3,
 }: ScrollVideoSceneProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const videoRef   = useRef<HTMLVideoElement>(null);
+  const wrapperRef  = useRef<HTMLDivElement>(null);
+  const stickyRef   = useRef<HTMLDivElement>(null);
+  const videoRef    = useRef<HTMLVideoElement>(null);
 
-  const targetProgress = useRef(0);
-  const lastProgress   = useRef(-1);       // ← detectar cambio real
-  const rafId          = useRef<number>(0);
-  const lastKfAt       = useRef<number | null>(null);
-  const audioRef       = useRef<HTMLAudioElement | null>(null);
+  const targetP  = useRef(0);   // progreso que marca el scroll
+  const currentP = useRef(0);   // progreso real (lerpeado)
+  const rafId    = useRef<number>(0);
+  const lastKfAt = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [activeKf,  setActiveKf]  = useState<SceneKeyframe | null>(null);
   const [kfVisible, setKfVisible] = useState(false);
 
-  /* ─── RAF loop: solo actualiza currentTime cuando el progreso cambió ─── */
+  /* ─── Fija la altura del sticky al tamaño real de la ventana una sola vez ─── */
+  useEffect(() => {
+    const sticky = stickyRef.current;
+    if (!sticky) return;
+
+    /* window.innerHeight es estable: no cambia cuando la barra del navegador
+       se oculta. dvh / svh en CSS sí cambian → causan saltos en iOS Safari. */
+    const setH = () => {
+      sticky.style.height = `${window.innerHeight}px`;
+    };
+    setH();
+
+    /* Solo reajustamos en orientationchange (rotar el teléfono), nunca en
+       scroll normal — evitamos el resize que dispara el hide/show del browser bar */
+    window.addEventListener("orientationchange", setH);
+    return () => window.removeEventListener("orientationchange", setH);
+  }, []);
+
+  /* ─── RAF loop con lerp: video se desliza suavemente hacia el frame objetivo ─── */
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -55,20 +78,22 @@ export function ScrollVideoScene({
       rafId.current = requestAnimationFrame(tick);
       if (!video.duration) return;
 
-      const p = targetProgress.current;
-      // Evita actualizar si no hubo cambio (≥0.1 ms de video = ~0.00001 en escala)
-      if (Math.abs(p - lastProgress.current) < 0.0001) return;
-      lastProgress.current = p;
+      /* Lerp: acercamos currentP a targetP un 18 % por frame (~60fps = 9 frames para 90%) */
+      const diff = targetP.current - currentP.current;
+      if (Math.abs(diff) < 0.0002) return; // ya llegamos, no toques el video
+      currentP.current += diff * LERP;
 
-      // Nunca setear exactamente duration — algunos browsers lo tratan como "ended"
-      video.currentTime = Math.min(p * video.duration, video.duration - 0.04);
+      video.currentTime = Math.min(
+        currentP.current * video.duration,
+        video.duration - 0.04,
+      );
     };
 
     rafId.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId.current);
   }, []);
 
-  /* ─── Scroll: solo escribe targetProgress, cero DOM ─── */
+  /* ─── Scroll: calcula targetP y detecta keyframes ─── */
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
@@ -81,13 +106,11 @@ export function ScrollVideoScene({
       const wh   = window.innerHeight;
       if (rect.top >= wh || rect.bottom <= 0) return;
 
-      // El scroll "útil" empieza cuando rect.top < 0 y termina cuando rect.bottom = wh
       const total   = rect.height - wh;
       const scrolled = Math.max(0, -rect.top);
       const p        = Math.min(1, scrolled / total);
-      targetProgress.current = p;
+      targetP.current = p;
 
-      /* Keyframe activo */
       let hit: SceneKeyframe | null = null;
       for (const kf of sorted) {
         if (Math.abs(p - kf.at) < THRESHOLD) { hit = kf; break; }
@@ -134,8 +157,8 @@ export function ScrollVideoScene({
       }
     };
 
-    window.addEventListener("resize", onOrient, { passive: true });
-    return () => window.removeEventListener("resize", onOrient);
+    window.addEventListener("orientationchange", onOrient);
+    return () => window.removeEventListener("orientationchange", onOrient);
   }, [videoSrcPortrait, videoSrcLandscape]);
 
   const initialSrc =
@@ -144,12 +167,18 @@ export function ScrollVideoScene({
       : videoSrcPortrait;
 
   return (
+    /* El wrapper tiene height en vh (no dvh) para evitar reflows en scroll */
     <div
       ref={wrapperRef}
       className="relative w-full"
       style={{ height: `${scrollMultiplier * 100}vh` }}
     >
-      <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-black">
+      {/* sticky: altura fijada por JS a window.innerHeight — nunca cambia en scroll */}
+      <div
+        ref={stickyRef}
+        className="sticky top-0 w-full overflow-hidden bg-black"
+        style={{ willChange: "transform" }}
+      >
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
@@ -158,6 +187,7 @@ export function ScrollVideoScene({
           playsInline
           preload="auto"
           className="absolute inset-0 h-full w-full object-cover"
+          style={{ willChange: "contents" }}
         />
 
         {/* Overlay texto */}
