@@ -1,55 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
 
 export interface SceneKeyframe {
-  /** Posición normalizada [0,1] en el video donde el texto aparece */
+  /** Posición normalizada [0,1] en la duración del video */
   at: number;
   title: string;
   subtitle?: string;
-  /** URL del audio a reproducir al entrar al keyframe */
+  /** Ruta del audio a reproducir al entrar en este keyframe */
   audioUrl?: string;
 }
 
 interface ScrollVideoSceneProps {
-  /** Video en modo retrato (móvil / vertical) */
+  /** Video principal (portrait / móvil) */
   videoSrcPortrait: string;
-  /** Video en modo paisaje (escritorio / horizontal). Si no se pasa, usa el mismo retrato. */
+  /** Video alternativo (landscape / escritorio). Usa el portrait si no se pasa. */
   videoSrcLandscape?: string;
   keyframes?: SceneKeyframe[];
-  /** Cuántos viewports dura el scroll (default 3) */
+  /** Cuántos viewports ocupa el área de scroll (default 3) */
   scrollMultiplier?: number;
 }
 
 const DEFAULT_KEYFRAMES: SceneKeyframe[] = [
   { at: 0, title: "Una historia de territorio", subtitle: "Desde los barrios de Bogotá" },
-  { at: 1, title: "Construyendo juntos", subtitle: "Con la gente y para la gente" },
+  { at: 1, title: "Construyendo juntos",        subtitle: "Con la gente y para la gente" },
 ];
-
-/* ─── helpers ─── */
-
-/** Calcula el scale del plano Three.js para lograr object-fit:cover */
-function getCoverScale(
-  videoW: number,
-  videoH: number,
-  canvasW: number,
-  canvasH: number,
-): [number, number] {
-  const videoAr = videoW / videoH;
-  const canvasAr = canvasW / canvasH;
-  if (canvasAr > videoAr) {
-    // Canvas más ancho que el video → escala por ancho
-    return [1, videoAr / canvasAr];
-  } else {
-    // Canvas más alto que el video → escala por alto
-    return [canvasAr / videoAr, 1];
-  }
-}
 
 function isPortrait() {
   if (typeof window === "undefined") return true;
-  return window.innerHeight > window.innerWidth;
+  return window.innerHeight >= window.innerWidth;
 }
 
 export function ScrollVideoScene({
@@ -59,146 +38,56 @@ export function ScrollVideoScene({
   scrollMultiplier = 3,
 }: ScrollVideoSceneProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef  = useRef<HTMLVideoElement>(null);
 
-  /* Three.js refs */
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
-  const meshRef = useRef<THREE.Mesh | null>(null);
-  const textureRef = useRef<THREE.VideoTexture | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const rafRef = useRef<number>(0);
+  /* Progreso objetivo — actualizado desde scroll, leído en RAF */
+  const targetProgress = useRef(0);
+  const rafId          = useRef<number>(0);
+  const lastKfAt       = useRef<number | null>(null);
+  const audioRef       = useRef<HTMLAudioElement | null>(null);
 
-  /* UI state */
-  const [activeKf, setActiveKf] = useState<SceneKeyframe | null>(null);
+  const [activeKf,  setActiveKf]  = useState<SceneKeyframe | null>(null);
   const [kfVisible, setKfVisible] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastKfAt = useRef<number | null>(null);
 
-  /* ─── Three.js setup ─── */
+  /* ─── RAF loop: el único lugar donde se toca currentTime ─── */
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-    /* Renderer */
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    rendererRef.current = renderer;
-
-    /* Escena y cámara ortográfica 2D */
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    cameraRef.current = camera;
-
-    /* Geometría del plano — 2×2 para cubrir el clip space completo */
-    const geometry = new THREE.PlaneGeometry(2, 2);
-
-    /* Video — elige retrato o paisaje según orientación inicial */
-    const portrait = isPortrait();
-    const src = (!portrait && videoSrcLandscape) ? videoSrcLandscape : videoSrcPortrait;
-
-    const video = document.createElement("video");
-    video.src = src;
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    videoRef.current = video;
-
-    const texture = new THREE.VideoTexture(video);
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    textureRef.current = texture;
-
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const mesh = new THREE.Mesh(geometry, material);
-    sceneRef.current.add(mesh);
-    meshRef.current = mesh;
-
-    /* Ajusta cover cuando el video carga sus dimensiones */
-    const updateCover = () => {
-      const vw = (video as HTMLVideoElement & { videoWidth: number }).videoWidth;
-      const vh = (video as HTMLVideoElement & { videoHeight: number }).videoHeight;
-      if (!vw || !vh) return;
-      const cw = canvas.clientWidth;
-      const ch = canvas.clientHeight;
-      const [sx, sy] = getCoverScale(vw, vh, cw, ch);
-      mesh.scale.set(1 / sx, 1 / sy, 1);
+    const tick = () => {
+      rafId.current = requestAnimationFrame(tick);
+      if (!video.duration) return;
+      video.currentTime = targetProgress.current * video.duration;
     };
 
-    video.addEventListener("loadedmetadata", updateCover);
+    /* Activa el video para iOS (requiere interacción o carga previa) */
+    video.load();
+    rafId.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId.current);
+  }, []);
 
-    /* Render loop */
-    const render = () => {
-      rafRef.current = requestAnimationFrame(render);
-      texture.needsUpdate = true;
-      renderer.render(scene, camera);
-    };
-    render();
-
-    /* Resize */
-    const onResize = () => {
-      if (!canvas.parentElement) return;
-      const w = canvas.parentElement.clientWidth;
-      const h = canvas.parentElement.clientHeight;
-      renderer.setSize(w, h, false);
-      updateCover();
-
-      /* Cambia fuente de video al rotar dispositivo (si hay versión landscape) */
-      if (videoSrcLandscape) {
-        const newSrc = (isPortrait() ? videoSrcPortrait : videoSrcLandscape);
-        if (video.src !== newSrc && !video.src.endsWith(newSrc)) {
-          const progress = video.duration ? video.currentTime / video.duration : 0;
-          video.src = newSrc;
-          video.load();
-          video.addEventListener("loadedmetadata", () => {
-            video.currentTime = progress * video.duration;
-            updateCover();
-          }, { once: true });
-        }
-      }
-    };
-    window.addEventListener("resize", onResize);
-    onResize();
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
-      video.removeEventListener("loadedmetadata", updateCover);
-      renderer.dispose();
-      geometry.dispose();
-      material.dispose();
-      texture.dispose();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoSrcPortrait, videoSrcLandscape]);
-
-  /* ─── Scroll handler ─── */
+  /* ─── Scroll: solo actualiza targetProgress y estado UI ─── */
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
 
+    const THRESHOLD = 0.06;
+    const sorted = [...keyframes].sort((a, b) => a.at - b.at);
+
     const onScroll = () => {
-      const video = videoRef.current;
       const rect = wrapper.getBoundingClientRect();
-      const wh = window.innerHeight;
+      const wh   = window.innerHeight;
+      if (rect.top >= wh || rect.bottom <= 0) return;
 
-      const isVisible = rect.top < wh && rect.bottom > 0;
-      if (!isVisible || !video?.duration) return;
-
-      const totalScroll = rect.height - wh;
+      const total   = rect.height - wh;
       const scrolled = Math.max(0, -rect.top);
-      const progress = Math.min(1, scrolled / totalScroll);
+      const p        = Math.min(1, scrolled / total);
+      targetProgress.current = p;
 
-      video.currentTime = progress * video.duration;
-
-      /* Detecta keyframe activo */
-      const THRESHOLD = 0.06;
-      const sortedKf = [...keyframes].sort((a, b) => a.at - b.at);
+      /* Keyframe activo */
       let hit: SceneKeyframe | null = null;
-      for (const kf of sortedKf) {
-        if (Math.abs(progress - kf.at) < THRESHOLD) { hit = kf; break; }
+      for (const kf of sorted) {
+        if (Math.abs(p - kf.at) < THRESHOLD) { hit = kf; break; }
       }
 
       if (hit) {
@@ -224,33 +113,75 @@ export function ScrollVideoScene({
     return () => window.removeEventListener("scroll", onScroll);
   }, [keyframes]);
 
+  /* ─── Cambio portrait ↔ landscape al rotar ─── */
+  useEffect(() => {
+    if (!videoSrcLandscape) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onOrient = () => {
+      const src = isPortrait() ? videoSrcPortrait : videoSrcLandscape!;
+      if (!video.src.endsWith(src)) {
+        const p = video.duration ? video.currentTime / video.duration : 0;
+        video.src = src;
+        video.load();
+        video.addEventListener("loadedmetadata", () => {
+          video.currentTime = p * video.duration;
+        }, { once: true });
+      }
+    };
+
+    window.addEventListener("resize", onOrient, { passive: true });
+    return () => window.removeEventListener("resize", onOrient);
+  }, [videoSrcPortrait, videoSrcLandscape]);
+
+  const src = (typeof window !== "undefined" && !isPortrait() && videoSrcLandscape)
+    ? videoSrcLandscape
+    : videoSrcPortrait;
+
   return (
     <div
       ref={wrapperRef}
       className="relative w-full"
       style={{ height: `${scrollMultiplier * 100}vh` }}
     >
-      {/* Canvas sticky */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        <canvas
-          ref={canvasRef}
-          style={{ display: "block", width: "100%", height: "100%" }}
+      {/* Zona sticky: ocupa 100vh mientras el usuario scrollea por el wrapper */}
+      <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-black">
+
+        {/* Video nativo — object-cover se encarga del recorte en cualquier ratio */}
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <video
+          ref={videoRef}
+          src={src}
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ willChange: "contents" }}
         />
 
-        {/* Overlay de texto en keyframes */}
+        {/* Overlay texto en keyframes */}
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-5 text-center transition-opacity duration-700 ${
-            kfVisible && activeKf ? "opacity-100" : "opacity-0"
-          }`}
+          className={[
+            "pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-5 text-center",
+            "transition-opacity duration-700",
+            kfVisible && activeKf ? "opacity-100" : "opacity-0",
+          ].join(" ")}
         >
           {activeKf && (
-            <div className="max-w-xl">
-              <h2 className="text-balance text-3xl font-black text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.85)] sm:text-4xl md:text-5xl lg:text-6xl">
+            <div className="max-w-lg">
+              <h2
+                className="text-balance text-3xl font-black text-white sm:text-4xl md:text-5xl lg:text-6xl"
+                style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.6)" }}
+              >
                 {activeKf.title}
               </h2>
               {activeKf.subtitle && (
-                <p className="mt-3 text-lg font-semibold text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)] sm:text-xl md:text-2xl">
+                <p
+                  className="mt-3 text-base font-semibold text-white/90 sm:text-lg md:text-xl"
+                  style={{ textShadow: "0 1px 10px rgba(0,0,0,0.8)" }}
+                >
                   {activeKf.subtitle}
                 </p>
               )}
@@ -258,9 +189,9 @@ export function ScrollVideoScene({
           )}
         </div>
 
-        {/* Fade-out hacia la siguiente sección */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-background to-transparent" />
+        {/* Gradientes de borde para fusionar con las secciones adyacentes */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-background/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
       </div>
     </div>
   );
