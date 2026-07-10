@@ -7,7 +7,7 @@ import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { LogoJLV } from "@/components/marca";
-import { DASHBOARD_NAV, type NavItem, type SubNavItem } from "./nav";
+import { DASHBOARD_NAV, isModuleActive, type NavItem, type SubNavItem } from "./nav";
 
 /**
  * Barra lateral de escritorio (lg+). La navegación en móvil vive en
@@ -21,8 +21,7 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
 
   const items = DASHBOARD_NAV.filter((i) => viewableModules.includes(i.module));
 
-  const moduleActive = (item: NavItem) =>
-    item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+  const moduleActive = (item: NavItem) => isModuleActive(item, pathname);
 
   // Abre automáticamente el módulo cuya ruta está activa.
   useEffect(() => {

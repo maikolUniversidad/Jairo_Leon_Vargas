@@ -93,9 +93,7 @@ export const DASHBOARD_NAV: NavItem[] = [
   },
   { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck, module: "auditoria" },
   { href: "/dashboard/ia", label: "Asistente IA", icon: Sparkles, module: "ia" },
-  { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, module: "notificaciones" },
   { href: "/dashboard/ubicaciones", label: "Ubicaciones", icon: Radar, module: "ubicaciones" },
-  { href: "/dashboard/perfil", label: "Mi perfil", icon: UserCircle, module: "perfil" },
   {
     href: "/dashboard/configuracion",
     label: "Configuración",
@@ -107,6 +105,8 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/configuracion?tab=integraciones", label: "Integraciones", icon: HardDrive, description: "Conexión con Google Drive y otros servicios." },
       { href: "/dashboard/configuracion?tab=conocimiento", label: "Base de conocimiento", icon: Database, description: "Sube documentos (RAG): se vectorizan como base de conocimiento del Asistente IA y se visualizan en un grafo por conceptos." },
       { href: "/dashboard/configuracion?tab=misredes", label: "Página /misredes", icon: Link2, description: "Edita la página pública de enlaces (redes, WhatsApp, prensa, campaña)." },
+      { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, description: "Bandeja completa de alertas y avisos del sistema (también en la campana del encabezado)." },
+      { href: "/dashboard/perfil", label: "Mi perfil", icon: UserCircle, description: "Tus datos, avatar y preferencias de cuenta (también en el avatar del encabezado)." },
     ],
   },
 ];
@@ -114,4 +114,19 @@ export const DASHBOARD_NAV: NavItem[] = [
 /** Devuelve el módulo del nav por su href base. */
 export function findModule(href: string): NavItem | undefined {
   return DASHBOARD_NAV.find((m) => m.href === href);
+}
+
+/**
+ * Indica si un módulo está activo para la ruta actual. Además del prefijo de
+ * su propia ruta, considera las rutas de sus submódulos (necesario para
+ * submódulos que viven fuera de la ruta base del módulo, p. ej. Notificaciones
+ * y Mi perfil dentro de Configuración).
+ */
+export function isModuleActive(item: NavItem, pathname: string): boolean {
+  if (item.href === "/dashboard") return pathname === "/dashboard";
+  if (pathname.startsWith(item.href)) return true;
+  return (item.submodules ?? []).some((s) => {
+    const path = s.href.split("?")[0] ?? s.href;
+    return pathname === path || pathname.startsWith(path + "/");
+  });
 }

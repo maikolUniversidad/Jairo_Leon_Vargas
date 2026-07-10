@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { DASHBOARD_NAV, type NavItem, type SubNavItem } from "./nav";
+import { DASHBOARD_NAV, isModuleActive, type SubNavItem } from "./nav";
 
 /**
  * Navegación en móvil (< lg). Se renderiza DENTRO de la columna de contenido,
@@ -26,8 +26,7 @@ export function MobileNav({ viewableModules }: { viewableModules: string[] }) {
 
   const items = DASHBOARD_NAV.filter((i) => viewableModules.includes(i.module));
 
-  const moduleActive = (item: NavItem) =>
-    item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+  const moduleActive = (item: (typeof items)[number]) => isModuleActive(item, pathname);
 
   const subActive = (sub: SubNavItem) => {
     const qIdx = sub.href.indexOf("?");
