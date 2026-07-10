@@ -10,10 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { uploadFileViaSignedUrl } from "@/lib/upload";
+import { cn } from "@/lib/utils";
 import { saveMisredesConfig } from "@/actions/misredes";
 import { type MisredesConfig } from "@/lib/misredes-shared";
+import { ImageCropper, type CropTarget } from "@/components/dashboard/image-cropper";
 
 type Cfg = MisredesConfig;
+
+type FotoField = "fotoUrl" | "fotoDestacada";
+
+/** Objetivo de recorte por foto (según cómo se renderiza en /misredes). */
+const CROP_TARGET: Record<FotoField, CropTarget & { titulo: string }> = {
+  // Destacada del centro: la página la muestra en 3:2.
+  fotoDestacada: { aspect: 3 / 2, width: 1200, height: 800, titulo: "1200×800 px (3:2)" },
+  // Foto de perfil: círculo → cuadrado 1:1.
+  fotoUrl: { aspect: 1, width: 512, height: 512, round: true, titulo: "512×512 px (círculo)" },
+};
 
 const REDES: { key: keyof Cfg["redes"]; label: string; ph: string }[] = [
   { key: "instagram", label: "Instagram", ph: "https://instagram.com/…" },
@@ -51,6 +63,8 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
   const [cfg, setCfg] = useState<Cfg>(initial);
   const [pending, start] = useTransition();
   const [uploading, setUploading] = useState<string | null>(null);
+  // Archivo elegido pendiente de recorte antes de subir.
+  const [cropping, setCropping] = useState<{ field: FotoField; file: File } | null>(null);
 
   const top = <K extends keyof Cfg>(k: K, v: Cfg[K]) => setCfg((p) => ({ ...p, [k]: v }));
   const nested = <O extends "campana" | "redes" | "prensa">(o: O, k: keyof Cfg[O], v: unknown) =>
@@ -73,12 +87,17 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
       return { ...p, enlaces: x };
     });
 
-  async function uploadPhoto(field: "fotoUrl" | "fotoDestacada", file: File) {
+  async function uploadCropped(field: FotoField, file: File) {
     setUploading(field);
     try {
       const up = await uploadFileViaSignedUrl("contenido", "misredes", file);
-      if (up.ok && up.url) top(field, up.url as never);
-      else toast.error(up.message);
+      if (up.ok && up.url) {
+        top(field, up.url as never);
+        toast.success("Imagen subida.");
+        setCropping(null);
+      } else {
+        toast.error(up.message);
+      }
     } finally {
       setUploading(null);
     }
@@ -209,26 +228,54 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
       </Section>
 
       <Section title="Fotos (opcional)" desc="El logo del hero es la imagen de marca; estas son la foto de perfil y la destacada.">
-        {(["fotoDestacada", "fotoUrl"] as const).map((field) => (
-          <div key={field} className="space-y-2">
-            <Label className="text-xs">{field === "fotoDestacada" ? "Foto destacada (centro de la página)" : "Foto de perfil (círculo pequeño)"}</Label>
-            {cfg[field] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={cfg[field]} alt="" className="h-24 w-full rounded-lg object-cover sm:w-40" />
-            ) : (
-              <div className="grid h-24 w-full place-items-center rounded-lg border border-dashed text-xs text-muted-foreground sm:w-40">Sin imagen</div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
-                <ImageUp className="size-4" /> {uploading === field ? "Subiendo…" : "Subir"}
-                <input type="file" accept="image/*" className="hidden" disabled={uploading === field}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(field, f); e.target.value = ""; }} />
-              </label>
-              <Input className="flex-1" value={cfg[field]} onChange={(e) => top(field, e.target.value as never)} placeholder="…o pega una URL" />
-              {cfg[field] && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => top(field, "" as never)}>Quitar</Button>}
+        {(["fotoDestacada", "fotoUrl"] as const).map((field) => {
+          const t = CROP_TARGET[field];
+          return (
+            <div key={field} className="space-y-2">
+              <Label className="flex flex-wrap items-center gap-2 text-xs">
+                {field === "fotoDestacada" ? "Foto destacada (centro de la página)" : "Foto de perfil (círculo pequeño)"}
+                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{t.titulo}</span>
+              </Label>
+              {cfg[field] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cfg[field]}
+                  alt=""
+                  className={cn(
+                    "object-cover",
+                    field === "fotoUrl" ? "size-24 rounded-full" : "h-24 w-full rounded-lg sm:w-40",
+                  )}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "grid place-items-center border border-dashed text-xs text-muted-foreground",
+                    field === "fotoUrl" ? "size-24 rounded-full" : "h-24 w-full rounded-lg sm:w-40",
+                  )}
+                >
+                  Sin imagen
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
+                  <ImageUp className="size-4" /> Subir y recortar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setCropping({ field, file: f });
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <Input className="flex-1" value={cfg[field]} onChange={(e) => top(field, e.target.value as never)} placeholder="…o pega una URL" />
+                {cfg[field] && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => top(field, "" as never)}>Quitar</Button>}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </Section>
 
       <div className="sticky bottom-32 flex justify-end lg:bottom-4">
@@ -236,6 +283,16 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
           <Save className="size-4" /> {pending ? "Guardando…" : "Guardar y publicar"}
         </Button>
       </div>
+
+      {/* Recorte antes de subir */}
+      <ImageCropper
+        open={!!cropping}
+        file={cropping?.file ?? null}
+        target={cropping ? CROP_TARGET[cropping.field] : CROP_TARGET.fotoUrl}
+        busy={!!uploading}
+        onCancel={() => setCropping(null)}
+        onConfirm={(f) => { if (cropping) uploadCropped(cropping.field, f); }}
+      />
     </div>
   );
 }
