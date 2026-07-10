@@ -27,74 +27,137 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
   background:var(--ink); min-height:100dvh; overflow-x:hidden; line-height:1.5; position:relative;
   padding:max(22px,env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom)); }
 
-/* ── Fondo fluido (ondas moradas) ── */
-body{ background:#5b1a72; }
+/* ══════════════════════════════════════════════
+   FONDO LÍQUIDO
+   Técnica: blur+contrast en el contenedor hace
+   que los blobs se FUSIONEN como mercurio/lava.
+   ══════════════════════════════════════════════ */
+body{ background:#3d0e55; }
 
-/* Filtro gooey: convierte blobs en ondas orgánicas */
-.fluid-bg{
+/* Capa que aplica el efecto metaball (gooey liquid) */
+.liquid-wrap{
   position:fixed; inset:0; z-index:-3; overflow:hidden;
-  filter:url(#goo) blur(0px);
+  /* El blur+contrast alto es lo que crea la fusión líquida */
+  filter: blur(0px) contrast(1);
+  background:#3d0e55;
 }
-.fluid-bg svg.defs{ position:absolute; width:0; height:0; }
-.fluid-bg .layer{
-  position:absolute; inset:0;
-  filter:blur(48px);
-  opacity:1;
+.liquid-inner{
+  position:absolute; inset:-30%;
+  /* Este es el corazón del efecto: blur grande + contrast alto = líquido */
+  filter: blur(60px) saturate(1.6) brightness(1.1);
 }
+
 .blob{ position:absolute; border-radius:50%; will-change:transform; }
-/* onda 1 – morado medio */
-.b1{ width:80vw; height:80vw; background:#8b2fa0; top:-20%; left:-25%;
-  animation:w1 18s ease-in-out infinite; }
-/* onda 2 – morado oscuro */
-.b2{ width:90vw; height:70vw; background:#6a1e88; top:10%; right:-30%;
-  animation:w2 22s ease-in-out infinite; }
-/* onda 3 – magenta */
-.b3{ width:70vw; height:90vw; background:#a73194; bottom:-20%; left:-10%;
-  animation:w3 26s ease-in-out infinite; }
-/* onda 4 – lila claro para brillo */
-.b4{ width:55vw; height:55vw; background:#c04db8; top:35%; left:15%;
-  animation:w1 32s ease-in-out infinite reverse; }
-/* onda 5 – oscuro base */
-.b5{ width:75vw; height:60vw; background:#4a1265; bottom:5%; right:-15%;
-  animation:w2 28s ease-in-out infinite reverse; }
 
-@keyframes w1{
-  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
-  33%{     transform:translate(8vw,12vw) scale(1.15) rotate(8deg); }
-  66%{     transform:translate(-5vw,6vw) scale(.92) rotate(-5deg); }
+/* Blob 1 – morado vivo, esquina superior izquierda */
+.b1{
+  width:110vw; height:110vw; max-width:700px; max-height:700px;
+  background:radial-gradient(circle at 40% 40%, #c050c0, #7a1e96 60%, transparent);
+  top:-15%; left:-20%;
+  animation: liq1 14s cubic-bezier(.45,.05,.55,.95) infinite;
 }
-@keyframes w2{
-  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
-  40%{     transform:translate(-10vw,-8vw) scale(1.12) rotate(-10deg); }
-  70%{     transform:translate(6vw,10vw) scale(.95) rotate(6deg); }
+/* Blob 2 – morado oscuro, derecha */
+.b2{
+  width:100vw; height:120vw; max-width:680px; max-height:780px;
+  background:radial-gradient(circle at 60% 50%, #8a28a8, #4a1070 65%, transparent);
+  top:5%; right:-25%;
+  animation: liq2 19s cubic-bezier(.45,.05,.55,.95) infinite;
 }
-@keyframes w3{
-  0%,100%{ transform:translate(0,0) scale(1) rotate(0deg); }
-  50%{     transform:translate(5vw,-10vw) scale(1.18) rotate(12deg); }
+/* Blob 3 – magenta, parte baja izquierda */
+.b3{
+  width:120vw; height:100vw; max-width:780px; max-height:650px;
+  background:radial-gradient(circle at 50% 55%, #b83aa8, #6a1880 60%, transparent);
+  bottom:-20%; left:-15%;
+  animation: liq3 22s cubic-bezier(.45,.05,.55,.95) infinite;
+}
+/* Blob 4 – lila brillante, centro */
+.b4{
+  width:70vw; height:80vw; max-width:460px; max-height:520px;
+  background:radial-gradient(circle at 50% 45%, #d060c8, #9030a0 55%, transparent);
+  top:20%; left:20%;
+  animation: liq1 17s cubic-bezier(.45,.05,.55,.95) infinite reverse;
+}
+/* Blob 5 – oscuro profundo, inferior derecha */
+.b5{
+  width:90vw; height:80vw; max-width:580px; max-height:520px;
+  background:radial-gradient(circle at 55% 50%, #601890, #2a0840 65%, transparent);
+  bottom:-10%; right:-20%;
+  animation: liq2 25s cubic-bezier(.45,.05,.55,.95) infinite reverse;
+}
+/* Blob 6 – destello rosa/fúcsia */
+.b6{
+  width:50vw; height:50vw; max-width:340px; max-height:340px;
+  background:radial-gradient(circle at 50% 50%, #e060d0 0%, #a030a0 50%, transparent);
+  top:45%; left:50%;
+  animation: liq3 20s cubic-bezier(.45,.05,.55,.95) infinite;
 }
 
-/* ── Hemiciclo tenue ── */
+/* Movimientos orgánicos: trayectorias distintas para cada blob */
+@keyframes liq1{
+  0%   { transform: translate(0,0)      scale(1)    rotate(0deg);   }
+  20%  { transform: translate(12vw,8vw) scale(1.08) rotate(6deg);   }
+  45%  { transform: translate(5vw,18vw) scale(.94)  rotate(-4deg);  }
+  70%  { transform: translate(-8vw,6vw) scale(1.12) rotate(10deg);  }
+  100% { transform: translate(0,0)      scale(1)    rotate(0deg);   }
+}
+@keyframes liq2{
+  0%   { transform: translate(0,0)       scale(1)    rotate(0deg);  }
+  25%  { transform: translate(-14vw,6vw) scale(1.10) rotate(-8deg); }
+  50%  { transform: translate(-6vw,14vw) scale(.92)  rotate(5deg);  }
+  75%  { transform: translate(8vw,-4vw)  scale(1.06) rotate(-6deg); }
+  100% { transform: translate(0,0)       scale(1)    rotate(0deg);  }
+}
+@keyframes liq3{
+  0%   { transform: translate(0,0)       scale(1)    rotate(0deg);  }
+  30%  { transform: translate(7vw,-12vw) scale(1.14) rotate(12deg); }
+  60%  { transform: translate(-5vw,-6vw) scale(.90)  rotate(-8deg); }
+  100% { transform: translate(0,0)       scale(1)    rotate(0deg);  }
+}
+
+/* ── Hemiciclo flotante ── */
 .hemiciclo{
-  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-  z-index:-2; width:min(500px,100vw); opacity:.14;
+  position:fixed;
+  bottom: -2%;
+  left:50%;
+  transform:translateX(-50%) translateY(0px);
+  z-index:-2;
+  width: min(520px, 102vw);
+  opacity:.18;
   pointer-events:none; user-select:none;
-  animation:hemAnim 60s linear infinite;
+  /* Flotación suave: sube/baja + leve rotación */
+  animation: flotar 8s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(200,80,210,.35));
 }
-@keyframes hemAnim{
-  0%,100%{ opacity:.12; transform:translateX(-50%) scale(1); }
-  50%{     opacity:.18; transform:translateX(-50%) scale(1.04); }
+@keyframes flotar{
+  0%,100%{ transform: translateX(-50%) translateY(0px)    rotate(0deg);   opacity:.16; }
+  25%{     transform: translateX(-50%) translateY(-14px)  rotate(.4deg);  opacity:.22; }
+  50%{     transform: translateX(-50%) translateY(-8px)   rotate(0deg);   opacity:.20; }
+  75%{     transform: translateX(-50%) translateY(-18px)  rotate(-.4deg); opacity:.18; }
 }
 
-.grain{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.06;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+/* Brillo de fondo suave para separar el hemiciclo */
+.hem-glow{
+  position:fixed; bottom:-10%; left:50%; transform:translateX(-50%);
+  z-index:-3; width:70vw; height:40vw; max-width:500px; max-height:300px;
+  background:radial-gradient(ellipse at 50% 80%, rgba(180,60,200,.22), transparent 70%);
+  animation: flotar 8s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.grain{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .vignette{ position:fixed; inset:0; z-index:-1; pointer-events:none;
-  background:radial-gradient(120% 80% at 50% 0%, transparent 45%, rgba(40,5,55,.65) 100%); }
+  background:radial-gradient(ellipse 120% 90% at 50% 10%, transparent 40%, rgba(20,2,32,.60) 100%); }
 .spotlight{ position:fixed; z-index:0; pointer-events:none; width:520px; height:520px; left:0; top:0;
   transform:translate(-50%,-50%); opacity:0; transition:opacity .4s;
   background:radial-gradient(circle, rgba(201,79,180,.14), transparent 60%); }
 
-/* Aurora — se mantiene para compat. con JS existente (sin efecto visual) */
-.aurora{ display:none; }
+.aurora{ display:none; } /* compat JS */
+
+@media(prefers-reduced-motion:reduce){
+  .b1,.b2,.b3,.b4,.b5,.b6{ animation:none; }
+  .hemiciclo,.hem-glow{ animation:none; }
+}
 
 .wrap{ width:100%; max-width:var(--maxw); margin:0 auto; position:relative; z-index:2; }
 .reveal{ opacity:0; transform:translateY(18px); animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
@@ -292,16 +355,18 @@ body{ background:#5b1a72; }
 </head>
 <body>
 
-<!-- Fondo fluido animado -->
-<div class="fluid-bg">
-  <div class="layer">
+<!-- Fondo líquido: blur+contrast = fusión tipo mercurio -->
+<div class="liquid-wrap">
+  <div class="liquid-inner">
     <span class="blob b1"></span>
     <span class="blob b2"></span>
     <span class="blob b3"></span>
     <span class="blob b4"></span>
     <span class="blob b5"></span>
+    <span class="blob b6"></span>
   </div>
 </div>
+<div class="hem-glow"></div>
 
 <!-- Hemiciclo (Cámara de Representantes) tenue de fondo -->
 <svg class="hemiciclo" viewBox="0 0 500 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
