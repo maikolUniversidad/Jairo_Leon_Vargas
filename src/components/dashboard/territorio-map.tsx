@@ -120,7 +120,10 @@ export function TerritorioMap({
   }, [highlight, source]);
 
   return (
-    <div className="relative">
+    // `isolate z-0`: encierra los z-index internos de Leaflet (paneles ~400,
+    // controles ~1000) en su propio contexto de apilamiento para que no se
+    // pinten por encima del topbar ni de la barra de navegación.
+    <div className="relative isolate z-0 overflow-hidden rounded-xl">
       <div ref={elRef} className="h-[520px] w-full rounded-xl border" />
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/60 text-sm text-muted-foreground">
