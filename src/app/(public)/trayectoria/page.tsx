@@ -24,7 +24,7 @@ const HITOS = [
   },
   {
     periodo: "2026 – 2030",
-    titulo: "Candidato a Cámara por Bogotá D.C.",
+    titulo: "Representante a la Cámara por Bogotá D.C.",
     desc: "Aspiración en el entorno del Pacto Histórico · Renglón 106.",
     tag: "Participación",
   },

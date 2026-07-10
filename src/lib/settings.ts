@@ -23,7 +23,7 @@ export interface PerfilPublico {
 /** Valores por defecto (datos públicos verificados). NO inventar biografía. */
 export const PERFIL_DEFAULT: PerfilPublico = {
   nombre: "Jairo León Vargas",
-  cargo_aspiracion: "Candidato a Cámara por Bogotá D.C.",
+  cargo_aspiracion: "Representante a la Cámara por Bogotá D.C.",
   movimiento: "Pacto Histórico / Colombia Humana",
   renglon: "106",
   lema: "Una voz desde el territorio para construir con la gente",

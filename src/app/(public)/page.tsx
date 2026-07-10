@@ -36,7 +36,7 @@ const ENFOQUES = [
 const TRAYECTORIA = [
   { titulo: "Alcalde Local de San Cristóbal", desc: "Gestión territorial y social en la localidad.", tag: "Gestión territorial" },
   { titulo: "Prosperidad Social", desc: "Director de Oferta Social / Gestión y Articulación de la Oferta Social.", tag: "Articulación institucional" },
-  { titulo: "Candidato a Cámara por Bogotá D.C.", desc: "Entorno del Pacto Histórico · Renglón 106.", tag: "Participación" },
+  { titulo: "Representante a la Cámara por Bogotá D.C.", desc: "Entorno del Pacto Histórico · Renglón 106.", tag: "Participación" },
 ];
 
 // Colores de marca para las fichas de enfoque (movimiento diverso y humano).
