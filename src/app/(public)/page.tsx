@@ -81,7 +81,32 @@ export default async function HomePage() {
       <section className="relative isolate overflow-hidden text-white">
         <HeroMedia videoUrl={perfil.hero_video_url || "/hero.mp4"} />
 
+        {/* Retrato del candidato — escritorio: a la derecha, anclado abajo, con degradado inferior */}
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-[1] hidden w-1/2 lg:block xl:w-[46%]">
+          <Image
+            src="/jairo-principal.png"
+            alt=""
+            fill
+            priority
+            sizes="50vw"
+            className="object-contain object-bottom"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#150d24] via-[#150d24]/70 to-transparent" />
+        </div>
+
         <div className="container relative z-10 flex min-h-[86vh] flex-col justify-center py-24 md:min-h-[90vh]">
+          {/* Retrato del candidato — móvil: encima del texto */}
+          <div className="mb-5 flex justify-center lg:hidden">
+            <Image
+              src="/jairo-principal.png"
+              alt="Jairo León Vargas"
+              width={1600}
+              height={1600}
+              priority
+              className="w-52 max-w-[62%] drop-shadow-2xl sm:w-64"
+            />
+          </div>
+
           <div className="max-w-3xl motion-safe:animate-fade-up">
             <Badge variant="accent" className="mb-5">
               {perfil.cargo_aspiracion} · Renglón {perfil.renglon}
