@@ -26,6 +26,7 @@ import {
 import { initials } from "@/lib/utils";
 import { CONTACT_TIPOS, CONTACT_TIPO_LABELS } from "@/types/database";
 import { uploadFileViaSignedUrl } from "@/lib/upload";
+import { ImageCropper, CROP_PRESETS } from "@/components/dashboard/image-cropper";
 import { createContact } from "@/actions/contactos";
 
 interface ZoneOpt { id: string; nombre_zona: string }
@@ -36,6 +37,7 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
   const [pending, start] = useTransition();
   const [uploading, setUploading] = useState(false);
   const [foto, setFoto] = useState("");
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [f, setF] = useState({
     nombre: "", apellido: "", puesto: "", organizacion: "", tipo: "aliado",
     influencia: "", telefono: "", whatsapp: "", email: "", localidad: "",
@@ -47,7 +49,7 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
     setUploading(true);
     try {
       const up = await uploadFileViaSignedUrl("contact-files", "fotos", file);
-      if (up.ok && up.url) setFoto(up.url);
+      if (up.ok && up.url) { setFoto(up.url); setCropFile(null); }
       else toast.error(up.message);
     } finally { setUploading(false); }
   }
@@ -81,11 +83,14 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
                 <img src={foto} alt="" className="size-full object-cover" />
               ) : initials(f.nombre || "Contacto")}
             </span>
-            <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-muted">
-              <ImageUp className="size-4" /> {uploading ? "Subiendo…" : "Subir foto"}
-              <input type="file" accept="image/*" className="hidden" disabled={uploading}
-                onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFoto(file); e.target.value = ""; }} />
-            </label>
+            <div>
+              <label className="flex w-fit cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-muted">
+                <ImageUp className="size-4" /> Subir y recortar
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) setCropFile(file); e.target.value = ""; }} />
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">{CROP_PRESETS.avatar.label}</p>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -134,6 +139,15 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
             {pending ? "Creando…" : "Crear contacto"}
           </Button>
         </div>
+
+        <ImageCropper
+          open={!!cropFile}
+          file={cropFile}
+          target={CROP_PRESETS.avatar}
+          busy={uploading}
+          onCancel={() => setCropFile(null)}
+          onConfirm={uploadFoto}
+        />
       </DialogContent>
     </Dialog>
   );

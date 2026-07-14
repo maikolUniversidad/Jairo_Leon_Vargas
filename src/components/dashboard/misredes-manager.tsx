@@ -13,18 +13,16 @@ import { uploadFileViaSignedUrl } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 import { saveMisredesConfig } from "@/actions/misredes";
 import { type MisredesConfig } from "@/lib/misredes-shared";
-import { ImageCropper, type CropTarget } from "@/components/dashboard/image-cropper";
+import { ImageCropper, CROP_PRESETS, type CropTarget } from "@/components/dashboard/image-cropper";
 
 type Cfg = MisredesConfig;
 
 type FotoField = "fotoUrl" | "fotoDestacada";
 
 /** Objetivo de recorte por foto (según cómo se renderiza en /misredes). */
-const CROP_TARGET: Record<FotoField, CropTarget & { titulo: string }> = {
-  // Destacada del centro: la página la muestra en 3:2.
-  fotoDestacada: { aspect: 3 / 2, width: 1200, height: 800, titulo: "1200×800 px (3:2)" },
-  // Foto de perfil: círculo → cuadrado 1:1.
-  fotoUrl: { aspect: 1, width: 512, height: 512, round: true, titulo: "512×512 px (círculo)" },
+const CROP_TARGET: Record<FotoField, CropTarget> = {
+  fotoDestacada: CROP_PRESETS.foto32, // la página la muestra en 3:2
+  fotoUrl: CROP_PRESETS.avatar, // círculo pequeño
 };
 
 const REDES: { key: keyof Cfg["redes"]; label: string; ph: string }[] = [
@@ -234,7 +232,7 @@ export function MisredesManager({ initial }: { initial: Cfg }) {
             <div key={field} className="space-y-2">
               <Label className="flex flex-wrap items-center gap-2 text-xs">
                 {field === "fotoDestacada" ? "Foto destacada (centro de la página)" : "Foto de perfil (círculo pequeño)"}
-                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{t.titulo}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{t.label}</span>
               </Label>
               {cfg[field] ? (
                 // eslint-disable-next-line @next/next/no-img-element

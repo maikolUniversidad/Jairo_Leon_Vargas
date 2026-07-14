@@ -23,6 +23,7 @@ import { initials } from "@/lib/utils";
 import type { Profile } from "@/types/database";
 import { updateMyProfile, updateMyAvatar } from "@/actions/perfil";
 import { uploadAvatar } from "@/lib/upload-avatar";
+import { ImageCropper, CROP_PRESETS } from "@/components/dashboard/image-cropper";
 
 const NO_AREA = "__none__";
 
@@ -42,6 +43,7 @@ export function ProfileForm({
   const [uploading, setUploading] = useState(false);
 
   const [avatar, setAvatar] = useState(profile?.avatar_url ?? "");
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [fullName, setFullName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [cargo, setCargo] = useState(profile?.cargo ?? "");
@@ -60,6 +62,7 @@ export function ProfileForm({
       const up = await uploadAvatar(profile.id, file);
       if (!up.ok || !up.url) { toast.error(up.message ?? "No se pudo subir."); return; }
       setAvatar(up.url);
+      setCropFile(null);
       const res = await updateMyAvatar(up.url);
       if (res.ok) { toast.success("Foto actualizada."); router.refresh(); }
       else toast.error(res.message);
@@ -115,10 +118,9 @@ export function ProfileForm({
                 type="file"
                 accept="image/*"
                 className="hidden"
-                disabled={uploading}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) pickAvatar(f);
+                  if (f) setCropFile(f);
                   e.target.value = "";
                 }}
               />
@@ -198,6 +200,15 @@ export function ProfileForm({
           </div>
         </CardContent>
       </Card>
+
+      <ImageCropper
+        open={!!cropFile}
+        file={cropFile}
+        target={CROP_PRESETS.avatar}
+        busy={uploading}
+        onCancel={() => setCropFile(null)}
+        onConfirm={pickAvatar}
+      />
     </div>
   );
 }

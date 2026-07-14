@@ -21,7 +21,24 @@ export interface CropTarget {
   height: number;
   /** Máscara circular (para fotos de perfil). */
   round?: boolean;
+  /** Etiqueta corta para mostrar en la interfaz, p. ej. "512×512 px". */
+  label?: string;
 }
+
+/**
+ * Tamaños estándar de la plataforma. Cada preset corresponde a cómo se muestra
+ * realmente la imagen, para que nunca se deforme ni se suba más grande de lo necesario.
+ */
+export const CROP_PRESETS = {
+  /** Fotos de perfil / contactos: se muestran en círculo. */
+  avatar: { aspect: 1, width: 512, height: 512, round: true, label: "512×512 px (círculo)" },
+  /** Portadas de noticias/publicaciones. */
+  cover169: { aspect: 16 / 9, width: 1200, height: 675, label: "1200×675 px (16:9)" },
+  /** Banner ancho (portada de workspace). */
+  banner31: { aspect: 3, width: 1200, height: 400, label: "1200×400 px (3:1)" },
+  /** Foto destacada 3:2. */
+  foto32: { aspect: 3 / 2, width: 1200, height: 800, label: "1200×800 px (3:2)" },
+} satisfies Record<string, CropTarget>
 
 // Ancho del recuadro de recorte en pantalla (px). La altura se deriva del aspecto.
 const BOX_W = 300;

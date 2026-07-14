@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { WorkspaceMembersDialog } from "@/components/dashboard/workspace-members-dialog";
 import { uploadFileViaSignedUrl } from "@/lib/upload";
+import { ImageCropper, CROP_PRESETS } from "@/components/dashboard/image-cropper";
 import { createWorkspace, updateWorkspace, type WorkspaceRow } from "@/actions/workspaces";
 
 interface PersonOption { id: string; full_name: string | null; email: string | null }
@@ -169,14 +170,18 @@ function EditWorkspaceDialog({
   const [color, setColor] = useState(ws.color);
   const [portada, setPortada] = useState(ws.portada_url ?? "");
   const [uploading, setUploading] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [pending, start] = useTransition();
 
   async function uploadCover(file: File) {
     setUploading(true);
     try {
       const up = await uploadFileViaSignedUrl("workspace-covers", ws.id, file);
-      if (up.ok && up.url) { setPortada(up.url); toast.success("Portada lista. Guarda para aplicar."); }
-      else toast.error(up.message);
+      if (up.ok && up.url) {
+        setPortada(up.url);
+        setCropFile(null);
+        toast.success("Portada lista. Guarda para aplicar.");
+      } else toast.error(up.message);
     } finally {
       setUploading(false);
     }
@@ -193,10 +198,13 @@ function EditWorkspaceDialog({
               <img src={portada} alt="Portada" className="h-full w-full object-cover" />
             )}
             <label className="absolute bottom-2 right-2 flex cursor-pointer items-center gap-1 rounded-md bg-background/90 px-2 py-1 text-xs font-medium shadow hover:bg-background">
-              <ImageUp className="size-3.5" /> {uploading ? "Subiendo…" : "Cambiar portada"}
-              <input type="file" accept="image/*" className="hidden" disabled={uploading}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
+              <ImageUp className="size-3.5" /> Cambiar portada
+              <input type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) setCropFile(f); e.target.value = ""; }} />
             </label>
+            <span className="absolute bottom-2 left-2 rounded-md bg-background/90 px-2 py-1 text-[10px] font-medium text-muted-foreground shadow">
+              {CROP_PRESETS.banner31.label}
+            </span>
           </div>
           <div>
             <Label htmlFor="e-nombre">Nombre</Label>
@@ -222,6 +230,15 @@ function EditWorkspaceDialog({
             {pending ? "Guardando…" : "Guardar cambios"}
           </Button>
         </div>
+
+        <ImageCropper
+          open={!!cropFile}
+          file={cropFile}
+          target={CROP_PRESETS.banner31}
+          busy={uploading}
+          onCancel={() => setCropFile(null)}
+          onConfirm={uploadCover}
+        />
       </DialogContent>
     </Dialog>
   );

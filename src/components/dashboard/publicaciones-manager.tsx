@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { formatDate } from "@/lib/utils";
 import { uploadFileViaSignedUrl } from "@/lib/upload";
+import { ImageCropper, CROP_PRESETS } from "@/components/dashboard/image-cropper";
 import { CONTENT_TIPOS, CONTENT_ESTADOS } from "@/lib/validations";
 import type { ContentPost } from "@/types/database";
 import { createPost, updatePost, setPostEstado, deletePost } from "@/actions/contenido";
@@ -113,6 +114,7 @@ function PostDialog({ post, onClose, onSaved }: { post?: ContentPost; onClose: (
   });
   const [imagen, setImagen] = useState(post?.imagen_url ?? "");
   const [uploading, setUploading] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [pending, start] = useTransition();
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
 
@@ -120,7 +122,7 @@ function PostDialog({ post, onClose, onSaved }: { post?: ContentPost; onClose: (
     setUploading(true);
     try {
       const up = await uploadFileViaSignedUrl("contenido", "posts", file);
-      if (up.ok && up.url) setImagen(up.url);
+      if (up.ok && up.url) { setImagen(up.url); setCropFile(null); }
       else toast.error(up.message);
     } finally { setUploading(false); }
   }
@@ -145,9 +147,12 @@ function PostDialog({ post, onClose, onSaved }: { post?: ContentPost; onClose: (
               <img src={imagen} alt="" className="h-full w-full object-cover" />
             )}
             <label className="absolute bottom-2 right-2 flex cursor-pointer items-center gap-1 rounded-md bg-background/90 px-2 py-1 text-xs font-medium shadow hover:bg-background">
-              <ImageUp className="size-3.5" /> {uploading ? "Subiendo…" : "Imagen"}
-              <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadImg(file); e.target.value = ""; }} />
+              <ImageUp className="size-3.5" /> Imagen
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) setCropFile(file); e.target.value = ""; }} />
             </label>
+            <span className="absolute bottom-2 left-2 rounded-md bg-background/90 px-2 py-1 text-[10px] font-medium text-muted-foreground shadow">
+              {CROP_PRESETS.cover169.label}
+            </span>
           </div>
           <div><Label>Título *</Label><Input value={f.titulo} onChange={(e) => set("titulo", e.target.value)} /></div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -189,6 +194,15 @@ function PostDialog({ post, onClose, onSaved }: { post?: ContentPost; onClose: (
             {pending ? "Guardando…" : post ? "Guardar cambios" : "Crear publicación"}
           </Button>
         </div>
+
+        <ImageCropper
+          open={!!cropFile}
+          file={cropFile}
+          target={CROP_PRESETS.cover169}
+          busy={uploading}
+          onCancel={() => setCropFile(null)}
+          onConfirm={uploadImg}
+        />
       </DialogContent>
     </Dialog>
   );
