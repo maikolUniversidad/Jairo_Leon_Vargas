@@ -38,14 +38,12 @@ body{ background:#8a289a; }
 
 /* ── Video de fondo responsive — div fijo, no background:fixed (iOS no lo soporta).
       Horizontal en apaisado / vertical en retrato (lo elige el script #bg-video-el).
-      La foto queda como poster/respaldo (autoplay bloqueado, carga lenta, reduced-motion). ── */
+      Sin foto de respaldo: mientras carga se ve el color de marca plano. ── */
 .bg-video{
   position:fixed; inset:0; z-index:-4; overflow:hidden;
-  background:#8a289a url('/Fondo mis redes.jpeg') center center / cover no-repeat;
+  background:#8a289a;
 }
 .bg-video video{ width:100%; height:100%; object-fit:cover; display:block; }
-/* Velo suave para mantener legible el contenido sobre el video */
-.bg-video::after{ content:""; position:absolute; inset:0; background:rgba(45,5,58,.26); }
 
 /* Ondas líquidas y hemiciclo reemplazados por el video (CSS/markup se conservan por si se quiere volver). */
 .wave-bg, .hemiciclo{ display:none !important; }
@@ -403,7 +401,7 @@ body{ background:#8a289a; }
      position:fixed — background-attachment:fixed no funciona en iOS. -->
 <div class="bg-video">
   <video id="bg-video-el" autoplay muted loop playsinline preload="auto"
-         poster="/Fondo mis redes.jpeg" aria-hidden="true" tabindex="-1"></video>
+         aria-hidden="true" tabindex="-1"></video>
 </div>
 <script>
 (function(){
