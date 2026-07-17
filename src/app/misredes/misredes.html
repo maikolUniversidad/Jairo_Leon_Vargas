@@ -36,16 +36,19 @@ body{ font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif
    ══════════════════════════════════════════════════════ */
 body{ background:#8a289a; }
 
-/* ── Imagen de fondo real (móvil) — div fijo, no background:fixed (iOS no lo soporta) ── */
-.bg-mobile{
-  display:none;
-  position:fixed; inset:0; z-index:-4;
+/* ── Video de fondo responsive — div fijo, no background:fixed (iOS no lo soporta).
+      Horizontal en apaisado / vertical en retrato (lo elige el script #bg-video-el).
+      La foto queda como poster/respaldo (autoplay bloqueado, carga lenta, reduced-motion). ── */
+.bg-video{
+  position:fixed; inset:0; z-index:-4; overflow:hidden;
   background:#8a289a url('/Fondo mis redes.jpeg') center center / cover no-repeat;
 }
-@media(max-width:768px){
-  .bg-mobile{ display:block; }
-  .wave-bg, .hemiciclo{ display:none !important; }
-}
+.bg-video video{ width:100%; height:100%; object-fit:cover; display:block; }
+/* Velo suave para mantener legible el contenido sobre el video */
+.bg-video::after{ content:""; position:absolute; inset:0; background:rgba(45,5,58,.26); }
+
+/* Ondas líquidas y hemiciclo reemplazados por el video (CSS/markup se conservan por si se quiere volver). */
+.wave-bg, .hemiciclo{ display:none !important; }
 
 /* Contenedor fijo pantalla completa */
 .wave-bg{
@@ -396,8 +399,35 @@ body{ background:#8a289a; }
 </head>
 <body>
 
-<!-- Fondo imagen real (solo móvil, position:fixed — background-attachment:fixed no funciona en iOS) -->
-<div class="bg-mobile"></div>
+<!-- Video de fondo responsive (horizontal/vertical según orientación; loop constante).
+     position:fixed — background-attachment:fixed no funciona en iOS. -->
+<div class="bg-video">
+  <video id="bg-video-el" autoplay muted loop playsinline preload="auto"
+         poster="/Fondo mis redes.jpeg" aria-hidden="true" tabindex="-1"></video>
+</div>
+<script>
+(function(){
+  var v = document.getElementById('bg-video-el');
+  if (!v) return;
+  /* Accesibilidad: si el usuario pide menos movimiento, se queda la foto (poster/fondo). */
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { v.remove(); return; }
+  var SRC_H = '/Fondos%20Mis%20Redes/Mis%20Redes%20Horizontal.mp4';
+  var SRC_V = '/Fondos%20Mis%20Redes/Mis%20Redes%20Vertical.mp4';
+  var mq = matchMedia('(orientation: portrait)');
+  function pick(){
+    var want = mq.matches ? SRC_V : SRC_H;
+    if (v.getAttribute('src') !== want) {
+      v.setAttribute('src', want);
+      v.load();
+      var p = v.play();
+      if (p && p.catch) p.catch(function(){}); /* autoplay bloqueado → queda el poster */
+    }
+  }
+  if (mq.addEventListener) mq.addEventListener('change', pick);
+  else if (mq.addListener) mq.addListener(pick); /* Safari viejo */
+  pick();
+})();
+</script>
 
 <!-- Fondo ondas líquidas -->
 <div class="wave-bg">
