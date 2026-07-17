@@ -18,7 +18,9 @@
   --c1:#f2a03d; --c2:#2e3192; --c3:#e4322b; --c4:#10984e; --c5:#7a2e7e;
   --wa:#25d366;
   --text:#fff; --muted:rgba(255,255,255,.70); --faint:rgba(255,255,255,.46);
-  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.09); --glass-line:rgba(255,255,255,.13);
+  /* Superficies "glass" más sólidas (tinte morado oscuro): sobre el video de fondo
+     en movimiento, el blanco casi transparente se lavaba y los botones se veían borrosos. */
+  --glass:rgba(30,9,38,.55); --glass-2:rgba(48,16,58,.68); --glass-line:rgba(255,255,255,.24);
   --radius:20px; --gap:14px; --maxw:452px;
 }
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
@@ -283,7 +285,7 @@ body{ background:#8a289a; }
   background:var(--glass); border:1px solid var(--glass-line); cursor:pointer; transition:transform .18s ease, background .25s, border-color .25s, box-shadow .25s; }
 .link:hover{ transform:translateY(-3px); background:var(--glass-2); border-color:rgba(255,255,255,.24); box-shadow:0 14px 30px rgba(0,0,0,.28); }
 .link:focus-visible{ outline:2px solid var(--brand-glow); outline-offset:3px; }
-.link .ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.06); }
+.link .ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.12); }
 .link .ic svg{ width:24px; height:24px; }
 .link .tx{ flex:1; min-width:0; }
 .link .tt{ font-weight:600; font-size:15px; }
@@ -307,7 +309,7 @@ body{ background:#8a289a; }
 /* Prensa y comunicaciones (acordeón) */
 .press{ margin-bottom:30px; border-radius:var(--radius); background:var(--glass); border:1px solid var(--glass-line); overflow:hidden; }
 .press-head{ width:100%; display:flex; align-items:center; gap:14px; padding:15px 16px; background:none; border:none; color:var(--text); cursor:pointer; font-family:inherit; }
-.press-head .ph-ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.06); }
+.press-head .ph-ic{ width:44px; height:44px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.12); }
 .press-head .ph-t{ flex:1; text-align:left; font-weight:600; font-size:15px; }
 .press-head .ph-chev{ color:var(--faint); transition:transform .3s; display:flex; }
 .press.open .ph-chev{ transform:rotate(180deg); }
