@@ -359,6 +359,21 @@ export const taskSchema = z.object({
 });
 export type TaskInput = z.infer<typeof taskSchema>;
 
+/**
+ * Patrón laxo de correo, solo para AVISAR — no para bloquear.
+ * Un contacto puede quedar registrado con un correo mal escrito; el aviso es
+ * para quien lo captura, no una barrera.
+ */
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export function looksLikeEmail(v: string): boolean {
+  return EMAIL_RE.test(v.trim());
+}
+
+/** Deja solo dígitos; sirve para saber si un teléfono es marcable. */
+export function phoneDigits(v: string | null | undefined): string {
+  return (v ?? "").replace(/\D/g, "");
+}
+
 export const contactSchema = z.object({
   nombre: z.string().trim().min(2, "Nombre requerido").max(160),
   apellido: z.string().trim().max(160).optional().or(z.literal("")),
@@ -369,7 +384,8 @@ export const contactSchema = z.object({
     .default("aliado"),
   telefono: z.string().trim().max(40).optional().or(z.literal("")),
   whatsapp: z.string().trim().max(40).optional().or(z.literal("")),
-  email: z.string().trim().email("Correo inválido").optional().or(z.literal("")),
+  // Sin .email(): un formato raro avisa en la UI pero NO impide guardar.
+  email: z.string().trim().max(160).optional().or(z.literal("")),
   direccion: z.string().trim().max(200).optional().or(z.literal("")),
   localidad: z.string().trim().max(120).optional().or(z.literal("")),
   barrio: z.string().trim().max(120).optional().or(z.literal("")),
@@ -377,6 +393,25 @@ export const contactSchema = z.object({
   influencia: z.enum(["alta", "media", "baja"]).optional().or(z.literal("")),
   notas: z.string().trim().max(4000).optional().or(z.literal("")),
   foto_url: z.string().trim().optional().or(z.literal("")),
+
+  /* ── Datos secundarios ── */
+  telefono_2: z.string().trim().max(40).optional().or(z.literal("")),
+  email_2: z.string().trim().max(160).optional().or(z.literal("")),
+
+  /* ── Redes y web ── */
+  facebook: z.string().trim().max(200).optional().or(z.literal("")),
+  instagram: z.string().trim().max(200).optional().or(z.literal("")),
+  x_twitter: z.string().trim().max(200).optional().or(z.literal("")),
+  tiktok: z.string().trim().max(200).optional().or(z.literal("")),
+  sitio_web: z.string().trim().max(300).optional().or(z.literal("")),
+
+  /* ── Datos personales ── */
+  documento: z.string().trim().max(40).optional().or(z.literal("")),
+  fecha_nacimiento: z.string().trim().optional().or(z.literal("")),
+  genero: z.string().trim().max(40).optional().or(z.literal("")),
+
+  /* ── Cajón de sastre ── */
+  otros_datos: z.string().trim().max(4000).optional().or(z.literal("")),
 });
 export type ContactInput = z.infer<typeof contactSchema>;
 

@@ -471,6 +471,18 @@ export interface Contact {
   etiquetas: string[] | null;
   estado: string;
   contexto_operativo: ContextoOperativo;
+  /* Datos secundarios y extendidos (0030_contactos_datos_extra.sql) */
+  telefono_2: string | null;
+  email_2: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  x_twitter: string | null;
+  tiktok: string | null;
+  sitio_web: string | null;
+  documento: string | null;
+  fecha_nacimiento: string | null;
+  genero: string | null;
+  otros_datos: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2, Network, Paperclip, ListChecks,
-  UserCheck, Upload, Link2, X, Plus, FileText,
+  UserCheck, Upload, Link2, X, Plus, FileText, Globe, IdCard, Cake,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,48 @@ import {
 } from "@/components/ui/select";
 import { TaskStatusBadge, PriorityBadge } from "@/lib/status";
 import { initials, formatDate } from "@/lib/utils";
+import { redSocialUrl } from "@/lib/contacto-acciones";
+import { ContactActions } from "@/components/dashboard/contact-actions";
+import { ContactEditDialog } from "@/components/dashboard/contact-edit-dialog";
+import type { ZoneOpt } from "@/components/dashboard/contact-form-fields";
 import { CONTACT_TIPO_LABELS, type Contact } from "@/types/database";
 import { uploadFileViaSignedUrl } from "@/lib/upload";
 import {
   addRelation, removeRelation, addContactDocument, removeContactDocument, linkReferredCitizen,
 } from "@/actions/contactos";
 import { createTask } from "@/actions/tareas";
+
+/** Enlaces a las redes que tenga registradas. No pinta nada si no hay ninguna. */
+function ContactRedes({ contact }: { contact: Contact }) {
+  const redes = (
+    [
+      ["facebook", "Facebook"],
+      ["instagram", "Instagram"],
+      ["x_twitter", "X"],
+      ["tiktok", "TikTok"],
+    ] as const
+  )
+    .map(([key, label]) => ({ label: label as string, url: redSocialUrl(key, contact[key]) }))
+    .filter((r): r is { label: string; url: string } => r.url !== null);
+
+  if (redes.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {redes.map((r) => (
+        <a
+          key={r.label}
+          href={r.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Globe className="size-3" /> {r.label}
+        </a>
+      ))}
+    </div>
+  );
+}
 
 interface MiniContact { id: string; nombre: string; apellido: string | null; puesto: string | null }
 interface MiniCitizen { id: string; nombre: string; apellido: string | null; localidad: string | null }
@@ -33,13 +69,14 @@ interface Doc { id: string; tipo: "archivo" | "link"; nombre: string; url: strin
 interface TaskMini { id: string; titulo: string; estado: string; prioridad: string; fecha_limite: string | null }
 
 export function ContactDetail({
-  contact, zoneName, allContacts, citizens,
+  contact, zoneName, allContacts, citizens, zones = [],
   relations: relIni, documents: docIni, tasks: taskIni, referidos: refIni,
 }: {
   contact: Contact;
   zoneName: string | null;
   allContacts: MiniContact[];
   citizens: MiniCitizen[];
+  zones?: ZoneOpt[];
   relations: Relation[];
   documents: Doc[];
   tasks: TaskMini[];
@@ -51,6 +88,7 @@ export function ContactDetail({
   const [documents, setDocuments] = useState(docIni);
   const [referidos, setReferidos] = useState(refIni);
   const [uploading, setUploading] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const [relPick, setRelPick] = useState("");
   const [relTipo, setRelTipo] = useState("aliado");
@@ -101,12 +139,41 @@ export function ContactDetail({
             <div className="mt-3 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
               {contact.organizacion && <p className="flex items-center gap-2"><Building2 className="size-3.5" />{contact.organizacion}</p>}
               {(contact.whatsapp || contact.telefono) && <p className="flex items-center gap-2"><Phone className="size-3.5" />{contact.whatsapp || contact.telefono}</p>}
-              {contact.email && <p className="flex items-center gap-2"><Mail className="size-3.5" />{contact.email}</p>}
+              {contact.telefono_2 && <p className="flex items-center gap-2"><Phone className="size-3.5" />{contact.telefono_2}</p>}
+              {contact.email && <p className="flex items-center gap-2 break-all"><Mail className="size-3.5 shrink-0" />{contact.email}</p>}
+              {contact.email_2 && <p className="flex items-center gap-2 break-all"><Mail className="size-3.5 shrink-0" />{contact.email_2}</p>}
+              {contact.documento && <p className="flex items-center gap-2"><IdCard className="size-3.5" />{contact.documento}</p>}
+              {contact.fecha_nacimiento && <p className="flex items-center gap-2"><Cake className="size-3.5" />{formatDate(contact.fecha_nacimiento)}</p>}
               {(zoneName || contact.localidad) && <p className="flex items-center gap-2"><MapPin className="size-3.5" />{zoneName || contact.localidad}{contact.barrio ? ` · ${contact.barrio}` : ""}</p>}
+              {contact.direccion && <p className="flex items-center gap-2"><MapPin className="size-3.5" />{contact.direccion}</p>}
+            </div>
+
+            <ContactRedes contact={contact} />
+
+            <div className="mt-4">
+              <ContactActions contact={contact} onEdit={() => setEditing(true)} />
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <ContactEditDialog
+        contact={contact}
+        zones={zones}
+        open={editing}
+        onOpenChange={setEditing}
+      />
+
+      {contact.otros_datos && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Otros datos
+            </p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{contact.otros_datos}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {contact.notas && (
         <Card className="mb-4"><CardContent className="p-4 text-sm text-muted-foreground whitespace-pre-wrap">{contact.notas}</CardContent></Card>

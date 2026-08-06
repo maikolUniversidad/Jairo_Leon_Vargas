@@ -36,6 +36,18 @@ export async function createContact(raw: unknown): Promise<ActionResult<{ id: st
       influencia: v.influencia || null,
       notas: v.notas || null,
       foto_url: v.foto_url || null,
+      telefono_2: v.telefono_2 || null,
+      email_2: v.email_2 || null,
+      facebook: v.facebook || null,
+      instagram: v.instagram || null,
+      x_twitter: v.x_twitter || null,
+      tiktok: v.tiktok || null,
+      sitio_web: v.sitio_web || null,
+      documento: v.documento || null,
+      // Una fecha vacía debe ir como NULL: "" rompe el tipo `date`.
+      fecha_nacimiento: v.fecha_nacimiento || null,
+      genero: v.genero || null,
+      otros_datos: v.otros_datos || null,
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -48,7 +60,9 @@ export async function createContact(raw: unknown): Promise<ActionResult<{ id: st
 
 export async function updateContact(id: string, raw: unknown): Promise<ActionResult> {
   const parsed = contactSchema.partial().safeParse(raw);
-  if (!parsed.success) return { ok: false, message: "Datos inválidos." };
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los campos.", fieldErrors: zodToFieldErrors(parsed.error) };
+  }
   const v = parsed.data;
   const supabase = await createClient();
   const {

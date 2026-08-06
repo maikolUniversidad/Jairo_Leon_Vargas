@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 import type { ZodError, ZodType } from "zod";
 
 import { cn } from "@/lib/utils";
@@ -172,8 +172,13 @@ interface FieldProps {
   /** Clave del campo; se usa para enlazar label, control y mensaje de error. */
   name?: string;
   error?: string;
+  /**
+   * Aviso NO bloqueante (ámbar). Para datos sospechosos pero admisibles:
+   * un correo mal escrito se avisa, pero el contacto se guarda igual.
+   */
+  warning?: string;
   required?: boolean;
-  /** Texto de ayuda, se oculta cuando hay error. */
+  /** Texto de ayuda, se oculta cuando hay error o aviso. */
   hint?: string;
   className?: string;
   children: React.ReactNode;
@@ -190,12 +195,14 @@ export function Field({
   label,
   name,
   error,
+  warning,
   required,
   hint,
   className,
   children,
 }: FieldProps) {
   const invalid = Boolean(error);
+  const warned = !invalid && Boolean(warning);
   const errorId = name ? `${name}-error` : undefined;
 
   return (
@@ -206,6 +213,7 @@ export function Field({
         // Tiñe el control interno sin acoplarse a cada primitiva de UI.
         invalid &&
           "[&_[role=combobox]]:border-destructive [&_button[type=button]]:border-destructive [&_input]:border-destructive [&_select]:border-destructive [&_textarea]:border-destructive",
+        warned && "[&_input]:border-amber-500 [&_textarea]:border-amber-500",
         className,
       )}
     >
@@ -227,6 +235,11 @@ export function Field({
         >
           <AlertCircle className="mt-px size-3.5 shrink-0" />
           <span>{error}</span>
+        </p>
+      ) : warned ? (
+        <p className="flex items-start gap-1 text-xs text-amber-600 dark:text-amber-500">
+          <AlertTriangle className="mt-px size-3.5 shrink-0" />
+          <span>{warning}</span>
         </p>
       ) : (
         hint && <p className="text-xs text-muted-foreground">{hint}</p>
