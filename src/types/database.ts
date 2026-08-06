@@ -95,6 +95,24 @@ export type Confidentiality = "publico" | "interno" | "reservado";
 
 export type ZoneType = "localidad" | "barrio" | "upz" | "municipio" | "vereda" | "departamento";
 
+export const ZONE_TYPES: readonly ZoneType[] = [
+  "localidad",
+  "barrio",
+  "upz",
+  "municipio",
+  "vereda",
+  "departamento",
+];
+
+export const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
+  localidad: "Localidad",
+  barrio: "Barrio",
+  upz: "UPZ",
+  municipio: "Municipio",
+  vereda: "Vereda",
+  departamento: "Departamento",
+};
+
 export interface Profile {
   id: string;
   full_name: string | null;

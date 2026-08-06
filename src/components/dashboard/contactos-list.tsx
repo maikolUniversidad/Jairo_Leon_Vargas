@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { DataView, type Column } from "@/components/dashboard/data-view";
 import { ContactCreateDialog } from "@/components/dashboard/contact-create-dialog";
 import { initials } from "@/lib/utils";
-import { CONTACT_TIPO_LABELS, type Contact } from "@/types/database";
+import { CONTACT_TIPO_LABELS, type Contact, type ZoneType } from "@/types/database";
 
-interface ZoneOpt { id: string; nombre_zona: string }
+interface ZoneOpt { id: string; nombre_zona: string; tipo_zona?: ZoneType | null }
 
 export function ContactosList({
   contacts,

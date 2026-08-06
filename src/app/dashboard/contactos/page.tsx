@@ -1,13 +1,17 @@
 import { PageHeader } from "@/components/dashboard/shared";
 import { ContactosList } from "@/components/dashboard/contactos-list";
 import { createClient } from "@/lib/supabase/server";
-import type { Contact } from "@/types/database";
+import type { Contact, ZoneType } from "@/types/database";
 
 export default async function ContactosPage() {
   const supabase = await createClient();
   const [{ data: contacts }, { data: zones }] = await Promise.all([
     supabase.from("contacts").select("*").is("deleted_at", null).order("nombre").limit(1000),
-    supabase.from("zones").select("id, nombre_zona").is("deleted_at", null).order("nombre_zona"),
+    supabase
+      .from("zones")
+      .select("id, nombre_zona, tipo_zona")
+      .is("deleted_at", null)
+      .order("nombre_zona"),
   ]);
 
   return (
@@ -18,7 +22,7 @@ export default async function ContactosPage() {
       />
       <ContactosList
         contacts={(contacts as Contact[]) ?? []}
-        zones={(zones as { id: string; nombre_zona: string }[]) ?? []}
+        zones={(zones as { id: string; nombre_zona: string; tipo_zona: ZoneType }[]) ?? []}
       />
     </>
   );
