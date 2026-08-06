@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, CalendarRange, Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -75,14 +76,14 @@ export function CalendarioEditorial({
                       <Select value={it.estado} onValueChange={(v) => {
                         // optimista
                         it.estado = v;
-                        (async () => { const r = await setCalendarEstado(it.id, v); if (!r.ok) { toast.error(r.message); router.refresh(); } })();
+                        (async () => { const r = await setCalendarEstado(it.id, v); if (!r.ok) { toast.error(describeFieldErrors(r) ?? r.message); router.refresh(); } })();
                       }}>
                         <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>{CONTENT_ESTADOS.map((e) => <SelectItem key={e} value={e}>{ESTADO_LABEL[e]}</SelectItem>)}</SelectContent>
                       </Select>
                       <button
                         className="rounded p-1.5 text-muted-foreground hover:text-destructive"
-                        onClick={() => { if (confirm("¿Quitar del calendario?")) { (async () => { const r = await deleteCalendarItem(it.id); if (r.ok) router.refresh(); else toast.error(r.message); })(); } }}
+                        onClick={() => { if (confirm("¿Quitar del calendario?")) { (async () => { const r = await deleteCalendarItem(it.id); if (r.ok) router.refresh(); else toast.error(describeFieldErrors(r) ?? r.message); })(); } }}
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -160,7 +161,7 @@ function CreateDialog({ posts, profiles, onSaved }: { posts: Opt[]; profiles: Op
               start(async () => {
                 const r = await createCalendarItem(f);
                 if (r.ok) { toast.success(r.message); setF({ titulo: "", canal: "", fecha_programada: "", estado: "programado", post_id: "", responsable_id: "" }); setOpen(false); onSaved(); }
-                else toast.error(r.message);
+                else toast.error(describeFieldErrors(r) ?? r.message);
               });
             }}
           >

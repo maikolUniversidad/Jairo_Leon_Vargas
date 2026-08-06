@@ -21,6 +21,7 @@ import {
 import { uploadFileViaSignedUrl } from "@/lib/upload";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -143,7 +144,7 @@ export function TaskBoard({
       const res = await updateTaskStatus(id, estado);
       if (res.ok) toast.success(`→ ${TASK_STATUS_LABELS[estado]}`);
       else {
-        toast.error(res.message);
+        toast.error(describeFieldErrors(res) ?? res.message);
         setLocal((prev) => prev.map((t) => (t.id === id ? { ...t, estado: task.estado } : t)));
       }
     });
@@ -277,7 +278,7 @@ function TaskDetailDialog({
           url: up.url, storage_path: up.path, mime: up.mime, size: up.size,
           etiqueta: newEtiqueta, estado: newEstado, es_requisito: newRequisito,
         });
-        if (!res.ok) toast.error(res.message);
+        if (!res.ok) toast.error(describeFieldErrors(res) ?? res.message);
       }
       load();
     } finally {
@@ -326,7 +327,7 @@ function TaskDetailDialog({
                 onClick={() =>
                   start(async () => {
                     const res = await removeTaskAssignee(task.id, a.user_id);
-                    if (res.ok) load(); else toast.error(res.message);
+                    if (res.ok) load(); else toast.error(describeFieldErrors(res) ?? res.message);
                   })
                 }
               >
@@ -358,7 +359,7 @@ function TaskDetailDialog({
               if (!addPerson) return;
               start(async () => {
                 const res = await addTaskAssignee(task.id, addPerson, addRol);
-                if (res.ok) { setAddPerson(""); load(); } else toast.error(res.message);
+                if (res.ok) { setAddPerson(""); load(); } else toast.error(describeFieldErrors(res) ?? res.message);
               });
             }}
           >
@@ -380,7 +381,7 @@ function TaskDetailDialog({
               start(async () => {
                 setAttachments((prev) => prev.map((x) => (x.id === at.id ? { ...x, ...patch } : x)));
                 const res = await updateTaskAttachment(at.id, patch);
-                if (!res.ok) { toast.error(res.message); load(); }
+                if (!res.ok) { toast.error(describeFieldErrors(res) ?? res.message); load(); }
               });
             return (
               <li key={at.id} className="rounded-lg border p-2 text-sm">
@@ -396,7 +397,7 @@ function TaskDetailDialog({
                     className="text-muted-foreground hover:text-destructive"
                     onClick={() => start(async () => {
                       const res = await removeTaskAttachment(at.id, at.storage_path);
-                      if (res.ok) load(); else toast.error(res.message);
+                      if (res.ok) load(); else toast.error(describeFieldErrors(res) ?? res.message);
                     })}
                   >
                     <X className="size-4" />
@@ -478,7 +479,7 @@ function TaskDetailDialog({
                     nombre: linkName.trim() || linkUrl.trim(), url: linkUrl.trim(),
                     etiqueta: newEtiqueta, estado: newEstado, es_requisito: newRequisito,
                   });
-                  if (res.ok) { setLinkName(""); setLinkUrl(""); load(); } else toast.error(res.message);
+                  if (res.ok) { setLinkName(""); setLinkUrl(""); load(); } else toast.error(describeFieldErrors(res) ?? res.message);
                 });
               }}
             >
@@ -512,7 +513,7 @@ function TaskDetailDialog({
             if (e.key === "Enter" && item.trim()) {
               start(async () => {
                 const res = await addChecklistItem({ task_id: task.id, texto: item });
-                if (res.ok) { setItem(""); load(); } else toast.error(res.message);
+                if (res.ok) { setItem(""); load(); } else toast.error(describeFieldErrors(res) ?? res.message);
               });
             }
           }}
@@ -528,7 +529,7 @@ function TaskDetailDialog({
             if (e.key === "Enter" && comment.trim()) {
               start(async () => {
                 const res = await addTaskComment({ task_id: task.id, comentario: comment });
-                if (res.ok) { setComment(""); load(); } else toast.error(res.message);
+                if (res.ok) { setComment(""); load(); } else toast.error(describeFieldErrors(res) ?? res.message);
               });
             }
           }}

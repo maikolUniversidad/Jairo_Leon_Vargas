@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth";
-import { type ActionResult } from "./types";
+import { newUserSchema } from "@/lib/validations";
+import { type ActionResult, zodToFieldErrors } from "./types";
 
 export interface ManagedUser {
   id: string;
@@ -75,27 +76,36 @@ export async function createUser(input: {
   role_key: string;
 }): Promise<ActionResult> {
   if (!(await assertAdmin())) return { ok: false, message: "No autorizado." };
-  if (!input.email || !input.password || input.password.length < 6) {
-    return { ok: false, message: "Correo y contraseña (mín. 6) son obligatorios." };
+
+  const parsed = newUserSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los campos.", fieldErrors: zodToFieldErrors(parsed.error) };
   }
+  const v = parsed.data;
 
   const admin = createAdminClient();
   const { data: created, error } = await admin.auth.admin.createUser({
-    email: input.email.trim(),
-    password: input.password,
+    email: v.email,
+    password: v.password,
     email_confirm: true,
-    user_metadata: { full_name: input.full_name.trim() },
+    user_metadata: { full_name: v.full_name },
   });
   if (error || !created.user) {
-    return { ok: false, message: error?.message ?? "No se pudo crear el usuario." };
+    // El correo duplicado es el fallo más común: se marca sobre el campo.
+    const dup = /already|registered|exists/i.test(error?.message ?? "");
+    return {
+      ok: false,
+      message: error?.message ?? "No se pudo crear el usuario.",
+      fieldErrors: dup ? { email: "Ya existe un usuario con este correo." } : undefined,
+    };
   }
 
-  const base = await baseRoleOf(input.role_key);
-  await admin.from("profiles").update({ full_name: input.full_name.trim() }).eq("id", created.user.id);
+  const base = await baseRoleOf(v.role_key);
+  await admin.from("profiles").update({ full_name: v.full_name }).eq("id", created.user.id);
   await admin.from("user_roles").delete().eq("user_id", created.user.id);
   await admin
     .from("user_roles")
-    .insert({ user_id: created.user.id, role: base, role_key: input.role_key });
+    .insert({ user_id: created.user.id, role: base, role_key: v.role_key });
 
   revalidatePath("/dashboard/configuracion");
   return { ok: true, message: `Usuario ${input.email} creado.` };

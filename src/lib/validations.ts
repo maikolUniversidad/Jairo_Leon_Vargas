@@ -464,3 +464,13 @@ export const documentSchema = z.object({
   size: z.number().int().nonnegative().optional(),
 });
 export type DocumentInput = z.infer<typeof documentSchema>;
+
+/* ──────────────── Alta de usuarios (panel de administración) ──────────────── */
+
+export const newUserSchema = z.object({
+  email: z.string().trim().min(1, "El correo es obligatorio").email("Correo inválido"),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
+  full_name: z.string().trim().min(2, "Escribe el nombre").max(160),
+  role_key: z.string().trim().min(1, "Selecciona un rol"),
+});
+export type NewUserInput = z.infer<typeof newUserSchema>;

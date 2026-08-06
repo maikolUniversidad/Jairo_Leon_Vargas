@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Search, Plus, Bot, Wand2, Mic, ImageIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,7 +140,7 @@ function NewAvatarDialog({ onClose }: { onClose: () => void }) {
         setValores(res.data.valores.join(", "));
         setEstiloVisual(res.data.estilo_visual);
         toast.success(res.message);
-      } else toast.error(res.message);
+      } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -159,7 +160,7 @@ function NewAvatarDialog({ onClose }: { onClose: () => void }) {
       if (res.ok && res.data) {
         toast.success(res.message);
         router.push(`/dashboard/comunicaciones/avatares/${res.data.id}`);
-      } else toast.error(res.message);
+      } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,7 +72,7 @@ export function ContactDetail({
       if (!up.ok || !up.url) { toast.error(up.message); return; }
       const res = await addContactDocument({ contact_id: contact.id, tipo: "archivo", nombre: up.name!, url: up.url, storage_path: up.path, mime: up.mime, size: up.size });
       if (res.ok) { setDocuments((d) => [{ id: crypto.randomUUID(), tipo: "archivo", nombre: up.name!, url: up.url!, storage_path: up.path ?? null }, ...d]); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     } finally { setUploading(false); }
   }
 
@@ -127,7 +128,7 @@ export function ContactDetail({
                   <button onClick={() => start(async () => {
                     const res = await removeRelation(contact.id, r.related_contact_id);
                     if (res.ok) setRelations((x) => x.filter((y) => y.related_contact_id !== r.related_contact_id));
-                    else toast.error(res.message);
+                    else toast.error(describeFieldErrors(res) ?? res.message);
                   })}><X className="size-3" /></button>
                 </Badge>
               ))}
@@ -154,7 +155,7 @@ export function ContactDetail({
                 start(async () => {
                   const res = await addRelation(contact.id, relPick, relTipo);
                   if (res.ok) { setRelations((x) => [...x, { related_contact_id: relPick, tipo_relacion: relTipo }]); setRelPick(""); }
-                  else toast.error(res.message);
+                  else toast.error(describeFieldErrors(res) ?? res.message);
                 });
               }}><Plus className="size-4" /></Button>
             </div>
@@ -173,7 +174,7 @@ export function ContactDetail({
                   <a href={d.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">{d.nombre}</a>
                   <button className="text-muted-foreground hover:text-destructive" onClick={() => start(async () => {
                     const res = await removeContactDocument(d.id, d.storage_path);
-                    if (res.ok) setDocuments((x) => x.filter((y) => y.id !== d.id)); else toast.error(res.message);
+                    if (res.ok) setDocuments((x) => x.filter((y) => y.id !== d.id)); else toast.error(describeFieldErrors(res) ?? res.message);
                   })}><X className="size-4" /></button>
                 </li>
               ))}
@@ -191,7 +192,7 @@ export function ContactDetail({
                 start(async () => {
                   const res = await addContactDocument({ contact_id: contact.id, tipo: "link", nombre: linkName.trim() || linkUrl.trim(), url: linkUrl.trim() });
                   if (res.ok) { setDocuments((x) => [{ id: crypto.randomUUID(), tipo: "link", nombre: linkName.trim() || linkUrl.trim(), url: linkUrl.trim(), storage_path: null }, ...x]); setLinkName(""); setLinkUrl(""); }
-                  else toast.error(res.message);
+                  else toast.error(describeFieldErrors(res) ?? res.message);
                 });
               }}><Link2 className="size-4" /></Button>
             </div>
@@ -220,7 +221,7 @@ export function ContactDetail({
                 if (taskTitle.trim().length < 3) return toast.error("Título muy corto.");
                 start(async () => {
                   const res = await createTask({ titulo: taskTitle, contact_id: contact.id, contexto_operativo: "comunitario", prioridad: "media", estado: "pendiente", responsables: [], participantes: [] });
-                  if (res.ok) { toast.success("Tarea creada."); setTaskTitle(""); router.refresh(); } else toast.error(res.message);
+                  if (res.ok) { toast.success("Tarea creada."); setTaskTitle(""); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
                 });
               }}><Plus className="size-4" /></Button>
             </div>
@@ -238,7 +239,7 @@ export function ContactDetail({
                   <span className="min-w-0 truncate">{r.nombre} {r.apellido ?? ""}{r.localidad ? ` · ${r.localidad}` : ""}</span>
                   <button className="text-muted-foreground hover:text-destructive" onClick={() => start(async () => {
                     const res = await linkReferredCitizen(r.id, null);
-                    if (res.ok) setReferidos((x) => x.filter((y) => y.id !== r.id)); else toast.error(res.message);
+                    if (res.ok) setReferidos((x) => x.filter((y) => y.id !== r.id)); else toast.error(describeFieldErrors(res) ?? res.message);
                   })}><X className="size-4" /></button>
                 </li>
               ))}
@@ -259,7 +260,7 @@ export function ContactDetail({
                     const c = citizens.find((x) => x.id === refPick);
                     if (c) setReferidos((x) => [...x, c]);
                     setRefPick("");
-                  } else toast.error(res.message);
+                  } else toast.error(describeFieldErrors(res) ?? res.message);
                 });
               }}><Plus className="size-4" /></Button>
             </div>

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +123,7 @@ export function DocumentsExplorer({
     start(async () => {
       const res = await getDocumentDownloadUrl(id);
       if (res.ok && res.data) window.open(res.data.url, "_blank", "noopener,noreferrer");
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -131,7 +132,7 @@ export function DocumentsExplorer({
     start(async () => {
       const res = await deleteFolder(f.id);
       if (res.ok) { toast.success(res.message); router.refresh(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -140,7 +141,7 @@ export function DocumentsExplorer({
     start(async () => {
       const res = await deleteDocument(d.id);
       if (res.ok) { toast.success(res.message); router.refresh(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -178,7 +179,7 @@ export function DocumentsExplorer({
                 start(async () => {
                   const res = await syncDocumentsToDrive();
                   if (res.ok) { toast.success(res.message); router.refresh(); }
-                  else toast.error(res.message);
+                  else toast.error(describeFieldErrors(res) ?? res.message);
                 })
               }
             >
@@ -363,7 +364,7 @@ function FolderDialog({
     start(async () => {
       const res = folder ? await updateFolder(folder.id, payload) : await createFolder(payload);
       if (res.ok) { toast.success(res.message); onSaved(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -466,7 +467,7 @@ function UploadDialog({
     start(async () => {
       const res = await createDocument(payload);
       if (res.ok) { toast.success(res.message); onSaved(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 

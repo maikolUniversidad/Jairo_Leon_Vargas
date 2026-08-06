@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MapPin, X } from "lucide-react";
 
+import { describeFieldErrors } from "@/components/ui/field";
 import { updateMyLocation, setLocationSharing, getMySharing } from "@/actions/ubicaciones";
 
 // Evento para activar/desactivar desde cualquier parte (p. ej. la página de Ubicaciones).
@@ -98,7 +99,7 @@ export function LocationTracker() {
     setSharing(active);
     const res = await setLocationSharing(active);
     if (!res.ok) {
-      toast.error(res.message);
+      toast.error(describeFieldErrors(res) ?? res.message);
       setSharing(!active);
     }
   }

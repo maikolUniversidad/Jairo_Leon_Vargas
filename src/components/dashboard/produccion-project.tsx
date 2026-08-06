@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +38,7 @@ type Status = { ai: boolean; aiProvider: string; higgsfield: boolean; search: bo
 /** Muestra un toast según el resultado de una acción. */
 function notify(res: { ok: boolean; message: string }) {
   if (res.ok) toast.success(res.message);
-  else toast.error(res.message);
+  else toast.error(describeFieldErrors(res) ?? res.message);
 }
 
 export function ProduccionProject({
@@ -62,7 +63,7 @@ export function ProduccionProject({
     if (!confirm("¿Eliminar este proyecto de video?")) return;
     const res = await deleteProject(project.id);
     if (res.ok) { toast.success(res.message); router.push("/dashboard/comunicaciones/produccion"); }
-    else toast.error(res.message);
+    else toast.error(describeFieldErrors(res) ?? res.message);
   }
 
   return (
@@ -265,7 +266,7 @@ function GuionTab({ project, status }: { project: VideoProject; status: Status }
     start(async () => {
       const res = await generateContent(project.id, tool, input);
       if (res.ok && res.data) { setOutput(res.data.output); setFuente(res.data.fuente); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -278,7 +279,7 @@ function GuionTab({ project, status }: { project: VideoProject; status: Status }
       : output;
     start(async () => {
       const res = await updateProject(project.id, { [field]: value } as Record<string, unknown>);
-      if (res.ok) toast.success("Guardado en el proyecto."); else toast.error(res.message);
+      if (res.ok) toast.success("Guardado en el proyecto."); else toast.error(describeFieldErrors(res) ?? res.message);
       router.refresh();
     });
   }
@@ -384,7 +385,7 @@ function VisualTab({
         imageUrl: kind === "video" && imageUrl ? imageUrl : undefined,
       });
       if (res.ok) { toast.success(res.message); setPrompt(""); router.refresh(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -446,7 +447,7 @@ function VisualTab({
                 <p className="line-clamp-2 text-xs text-muted-foreground">{g.prompt}</p>
                 <div className="flex items-center gap-1">
                   {g.status === "processing" && g.provider === "higgsfield" && (
-                    <Button variant="ghost" size="icon" onClick={async () => { const res = await checkVisual(g.id); if (res.ok) toast.success("Actualizado."); else toast.error(res.message); router.refresh(); }}>
+                    <Button variant="ghost" size="icon" onClick={async () => { const res = await checkVisual(g.id); if (res.ok) toast.success("Actualizado."); else toast.error(describeFieldErrors(res) ?? res.message); router.refresh(); }}>
                       <RefreshCw className="size-4" />
                     </Button>
                   )}

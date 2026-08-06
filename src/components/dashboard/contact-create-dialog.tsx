@@ -7,7 +7,6 @@ import { Plus, ImageUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -24,9 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Field, FieldErrorSummary, useFieldErrors } from "@/components/ui/field";
 import { initials } from "@/lib/utils";
 import { normalizeName } from "@/lib/geo-sources";
-import { LOCALIDADES } from "@/lib/validations";
+import { LOCALIDADES, contactSchema } from "@/lib/validations";
 import {
   CONTACT_TIPOS,
   CONTACT_TIPO_LABELS,
@@ -59,7 +59,12 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
     influencia: "", telefono: "", whatsapp: "", email: "", localidad: "",
     barrio: "", direccion: "", zona_id: "", notas: "",
   });
-  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const fe = useFieldErrors();
+  // Al escribir se borra el error de ese campo: el rojo desaparece al corregir.
+  const set = (k: keyof typeof f, v: string) => {
+    fe.clear(k);
+    setF((p) => ({ ...p, [k]: v }));
+  };
 
   // Mantiene las zonas del servidor sin perder las que se acaban de registrar aquí.
   useEffect(() => {
@@ -131,16 +136,24 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
   }
 
   function submit() {
-    if (!f.nombre.trim()) return toast.error("Escribe el nombre.");
+    // Valida en el cliente con el MISMO esquema del server action, para señalar
+    // el campo exacto sin esperar el viaje al servidor.
+    const payload = { ...f, foto_url: foto };
+    if (!fe.validate(contactSchema, payload)) return;
+
     start(async () => {
-      const res = await createContact({ ...f, foto_url: foto });
+      const res = await createContact(payload);
       if (res.ok) {
         toast.success(res.message);
         setOpen(false);
         setF({ nombre: "", apellido: "", puesto: "", organizacion: "", tipo: "aliado", influencia: "", telefono: "", whatsapp: "", email: "", localidad: "", barrio: "", direccion: "", zona_id: "", notas: "" });
         setFoto("");
+        fe.clear();
         router.refresh();
-      } else toast.error(res.message);
+      } else {
+        // Si el servidor rechaza algo que el cliente no vio, lo marca igual.
+        if (!fe.fromResult(res)) toast.error(res.message);
+      }
     });
   }
 
@@ -151,7 +164,7 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
       </DialogTrigger>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader><DialogTitle>Nuevo contacto</DialogTitle></DialogHeader>
-        <div className="space-y-4">
+        <div ref={fe.containerRef} className="space-y-4">
           <div className="flex items-center gap-4">
             <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-lg font-bold text-white">
               {foto ? (
@@ -170,21 +183,27 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label>Nombre *</Label><Input value={f.nombre} onChange={(e) => set("nombre", e.target.value)} /></div>
-            <div><Label>Apellido</Label><Input value={f.apellido} onChange={(e) => set("apellido", e.target.value)} /></div>
-            <div><Label>Puesto / cargo</Label><Input value={f.puesto} onChange={(e) => set("puesto", e.target.value)} placeholder="Presidente JAC, Edil…" /></div>
-            <div><Label>Organización</Label><Input value={f.organizacion} onChange={(e) => set("organizacion", e.target.value)} /></div>
-            <div>
-              <Label>Tipo</Label>
+            <Field label="Nombre" required {...fe.field("nombre")}>
+              <Input id="nombre" value={f.nombre} onChange={(e) => set("nombre", e.target.value)} autoComplete="given-name" aria-invalid={!!fe.errors.nombre} />
+            </Field>
+            <Field label="Apellido" {...fe.field("apellido")}>
+              <Input id="apellido" value={f.apellido} onChange={(e) => set("apellido", e.target.value)} autoComplete="family-name" aria-invalid={!!fe.errors.apellido} />
+            </Field>
+            <Field label="Puesto / cargo" {...fe.field("puesto")}>
+              <Input id="puesto" value={f.puesto} onChange={(e) => set("puesto", e.target.value)} placeholder="Presidente JAC, Edil…" aria-invalid={!!fe.errors.puesto} />
+            </Field>
+            <Field label="Organización" {...fe.field("organizacion")}>
+              <Input id="organizacion" value={f.organizacion} onChange={(e) => set("organizacion", e.target.value)} aria-invalid={!!fe.errors.organizacion} />
+            </Field>
+            <Field label="Tipo" {...fe.field("tipo")}>
               <Select value={f.tipo} onValueChange={(v) => set("tipo", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CONTACT_TIPOS.map((t) => <SelectItem key={t} value={t}>{CONTACT_TIPO_LABELS[t]}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label>Influencia</Label>
+            </Field>
+            <Field label="Influencia" {...fe.field("influencia")}>
               <Select value={f.influencia} onValueChange={(v) => set("influencia", v)}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
@@ -193,12 +212,17 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
                   <SelectItem value="baja">Baja</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div><Label>Teléfono</Label><Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} /></div>
-            <div><Label>WhatsApp</Label><Input value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} /></div>
-            <div><Label>Correo</Label><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-            <div>
-              <Label>Zona / territorio</Label>
+            </Field>
+            <Field label="Teléfono" {...fe.field("telefono")}>
+              <Input id="telefono" type="tel" inputMode="tel" value={f.telefono} onChange={(e) => set("telefono", e.target.value)} autoComplete="tel" aria-invalid={!!fe.errors.telefono} />
+            </Field>
+            <Field label="WhatsApp" {...fe.field("whatsapp")}>
+              <Input id="whatsapp" type="tel" inputMode="tel" value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} aria-invalid={!!fe.errors.whatsapp} />
+            </Field>
+            <Field label="Correo" hint="nombre@dominio.com" {...fe.field("email")}>
+              <Input id="email" type="email" inputMode="email" autoCapitalize="none" autoComplete="email" value={f.email} onChange={(e) => set("email", e.target.value)} aria-invalid={!!fe.errors.email} />
+            </Field>
+            <Field label="Zona / territorio" {...fe.field("zona_id")}>
               <Combobox
                 value={f.zona_id}
                 onChange={elegirZona}
@@ -223,11 +247,19 @@ export function ContactCreateDialog({ zones }: { zones: ZoneOpt[] }) {
                   </select>
                 }
               />
-            </div>
-            <div><Label>Localidad</Label><Input value={f.localidad} onChange={(e) => set("localidad", e.target.value)} /></div>
-            <div><Label>Barrio</Label><Input value={f.barrio} onChange={(e) => set("barrio", e.target.value)} /></div>
+            </Field>
+            <Field label="Localidad" {...fe.field("localidad")}>
+              <Input id="localidad" value={f.localidad} onChange={(e) => set("localidad", e.target.value)} aria-invalid={!!fe.errors.localidad} />
+            </Field>
+            <Field label="Barrio" {...fe.field("barrio")}>
+              <Input id="barrio" value={f.barrio} onChange={(e) => set("barrio", e.target.value)} aria-invalid={!!fe.errors.barrio} />
+            </Field>
           </div>
-          <div><Label>Notas</Label><Textarea rows={2} value={f.notas} onChange={(e) => set("notas", e.target.value)} /></div>
+          <Field label="Notas" {...fe.field("notas")}>
+            <Textarea id="notas" rows={2} value={f.notas} onChange={(e) => set("notas", e.target.value)} aria-invalid={!!fe.errors.notas} />
+          </Field>
+
+          <FieldErrorSummary errors={fe.errors} onFocus={fe.focusFirstInvalid} />
 
           <Button className="w-full" disabled={pending || uploading} onClick={submit}>
             {pending ? "Creando…" : "Crear contacto"}

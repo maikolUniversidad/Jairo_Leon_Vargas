@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Globe, Lock, Trash2, CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -61,7 +62,7 @@ export function EventsManager({ events }: { events: ManagedEvent[] }) {
                       start(async () => {
                         const res = await setEventPublish(e.id, !publico);
                         if (res.ok) { toast.success(res.message); router.refresh(); }
-                        else toast.error(res.message);
+                        else toast.error(describeFieldErrors(res) ?? res.message);
                       })
                     }
                   >
@@ -76,7 +77,7 @@ export function EventsManager({ events }: { events: ManagedEvent[] }) {
                       start(async () => {
                         const res = await softDeleteEvent(e.id);
                         if (res.ok) { toast.success(res.message); router.refresh(); }
-                        else toast.error(res.message);
+                        else toast.error(describeFieldErrors(res) ?? res.message);
                       })
                     }
                   >

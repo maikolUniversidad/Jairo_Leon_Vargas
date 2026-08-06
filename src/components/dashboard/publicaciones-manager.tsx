@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ExternalLink, ImageUp, Newspaper } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,7 +68,7 @@ export function PublicacionesManager({ posts }: { posts: ContentPost[] }) {
                 <div className="flex items-center justify-between pt-1">
                   <Select value={p.estado} onValueChange={(v) => start(async () => {
                     const r = await setPostEstado(p.id, v);
-                    if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.message);
+                    if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(describeFieldErrors(r) ?? r.message);
                   })}>
                     <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -81,7 +82,7 @@ export function PublicacionesManager({ posts }: { posts: ContentPost[] }) {
                       </a>
                     )}
                     <button onClick={() => setEdit(p)} className="rounded p-1.5 text-muted-foreground hover:text-foreground"><Pencil className="size-4" /></button>
-                    <button onClick={() => { if (confirm("¿Eliminar?")) start(async () => { const r = await deletePost(p.id); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(r.message); }); }} className="rounded p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
+                    <button onClick={() => { if (confirm("¿Eliminar?")) start(async () => { const r = await deletePost(p.id); if (r.ok) { toast.success(r.message); router.refresh(); } else toast.error(describeFieldErrors(r) ?? r.message); }); }} className="rounded p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
                   </div>
                 </div>
               </CardContent>
@@ -132,7 +133,7 @@ function PostDialog({ post, onClose, onSaved }: { post?: ContentPost; onClose: (
     start(async () => {
       const payload = { ...f, imagen_url: imagen };
       const r = post ? await updatePost(post.id, payload) : await createPost(payload);
-      if (r.ok) { toast.success(r.message); onSaved(); } else toast.error(r.message);
+      if (r.ok) { toast.success(r.message); onSaved(); } else toast.error(describeFieldErrors(r) ?? r.message);
     });
   }
 

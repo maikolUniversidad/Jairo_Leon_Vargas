@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -284,7 +285,7 @@ function changeStatus(
   start(async () => {
     const res = await updateDirectiveStatus(id, estado);
     if (res.ok) toast.success(res.message);
-    else toast.error(res.message);
+    else toast.error(describeFieldErrors(res) ?? res.message);
   });
 }
 
@@ -323,7 +324,7 @@ function DirectiveComposer({
         const supabase = createClient();
         const { data } = await supabase.from("location_directives").select("*").order("created_at", { ascending: false });
         if (data) setDirs(data as LocationDirective[]);
-      } else toast.error(res.message);
+      } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -402,7 +403,7 @@ function CoordinatorDirectives({
     start(async () => {
       const res = await deleteDirective(id);
       if (res.ok) { toast.success(res.message); setDirs((prev) => prev.filter((d) => d.id !== id)); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 

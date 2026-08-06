@@ -6,8 +6,8 @@ import { Search, History, Clock, Phone, MapPin, User2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Field as FormField, useFieldErrors } from "@/components/ui/field";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -226,6 +226,7 @@ function RequestDetailDialog({
   const [history, setHistory] = useState<RequestHistory[]>([]);
   const [note, setNote] = useState("");
 
+  const fe = useFieldErrors();
   // Estado editable de la gestión
   const [form, setForm] = useState({
     estado: request.estado as string,
@@ -248,16 +249,19 @@ function RequestDetailDialog({
   };
   useEffect(loadHistory, [request.id]);
 
-  const set = (k: keyof typeof form, v: string | boolean) =>
+  const set = (k: keyof typeof form, v: string | boolean) => {
+    fe.clear(k);
     setForm((f) => ({ ...f, [k]: v }));
+  };
 
   const save = () =>
     start(async () => {
       const res = await updateRequest({ id: request.id, ...form });
       if (res.ok) {
         toast.success(res.message);
+        fe.clear();
         loadHistory();
-      } else toast.error(res.message);
+      } else if (!fe.fromResult(res)) toast.error(res.message);
     });
 
   const saveNote = () =>
@@ -310,36 +314,32 @@ function RequestDetailDialog({
 
         {/* Gestión */}
         <h4 className="mt-2 text-sm font-semibold">Gestión del trámite</h4>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label>Estado</Label>
+        <div ref={fe.containerRef} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <FormField label="Estado" {...fe.field("estado")}>
             <Select value={form.estado} onValueChange={(v) => set("estado", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ESTADOS.map((e) => <SelectItem key={e} value={e}>{REQUEST_STATUS_LABELS[e]}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>Prioridad</Label>
+          </FormField>
+          <FormField label="Prioridad" {...fe.field("prioridad")}>
             <Select value={form.prioridad} onValueChange={(v) => set("prioridad", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PRIORIDADES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>Semáforo</Label>
+          </FormField>
+          <FormField label="Semáforo" {...fe.field("semaforo")}>
             <Select value={form.semaforo} onValueChange={(v) => set("semaforo", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {SEMAFOROS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>Responsable (UTL)</Label>
+          </FormField>
+          <FormField label="Responsable (UTL)" {...fe.field("responsable_id")}>
             <Select value={form.responsable_id || "none"} onValueChange={(v) => set("responsable_id", v === "none" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
               <SelectContent>
@@ -349,41 +349,33 @@ function RequestDetailDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>Persona encargada</Label>
-            <Input value={form.persona_encargada} onChange={(e) => set("persona_encargada", e.target.value)} />
-          </div>
-          <div>
-            <Label>Persona recibe</Label>
-            <Input value={form.persona_recibe} onChange={(e) => set("persona_recibe", e.target.value)} />
-          </div>
-          <div>
-            <Label>Entidad</Label>
-            <Input value={form.entidad} onChange={(e) => set("entidad", e.target.value)} />
-          </div>
-          <div>
-            <Label>Fecha de gestión</Label>
-            <Input type="date" value={form.fecha_gestion} onChange={(e) => set("fecha_gestion", e.target.value)} />
-          </div>
-          <div>
-            <Label>Fecha límite</Label>
-            <Input type="date" value={form.fecha_limite} onChange={(e) => set("fecha_limite", e.target.value)} />
-          </div>
+          </FormField>
+          <FormField label="Persona encargada" {...fe.field("persona_encargada")}>
+            <Input id="persona_encargada" value={form.persona_encargada} onChange={(e) => set("persona_encargada", e.target.value)} aria-invalid={!!fe.errors.persona_encargada} />
+          </FormField>
+          <FormField label="Persona recibe" {...fe.field("persona_recibe")}>
+            <Input id="persona_recibe" value={form.persona_recibe} onChange={(e) => set("persona_recibe", e.target.value)} aria-invalid={!!fe.errors.persona_recibe} />
+          </FormField>
+          <FormField label="Entidad" {...fe.field("entidad")}>
+            <Input id="entidad" value={form.entidad} onChange={(e) => set("entidad", e.target.value)} aria-invalid={!!fe.errors.entidad} />
+          </FormField>
+          <FormField label="Fecha de gestión" {...fe.field("fecha_gestion")}>
+            <Input id="fecha_gestion" type="date" value={form.fecha_gestion} onChange={(e) => set("fecha_gestion", e.target.value)} aria-invalid={!!fe.errors.fecha_gestion} />
+          </FormField>
+          <FormField label="Fecha límite" {...fe.field("fecha_limite")}>
+            <Input id="fecha_limite" type="date" value={form.fecha_limite} onChange={(e) => set("fecha_limite", e.target.value)} aria-invalid={!!fe.errors.fecha_limite} />
+          </FormField>
         </div>
-        <div>
-          <Label>Trámite / acciones</Label>
-          <Textarea rows={2} value={form.tramite} onChange={(e) => set("tramite", e.target.value)} />
-        </div>
-        <div>
-          <Label>Observaciones</Label>
-          <Textarea rows={3} value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} />
-        </div>
+        <FormField label="Trámite / acciones" {...fe.field("tramite")}>
+          <Textarea id="tramite" rows={2} value={form.tramite} onChange={(e) => set("tramite", e.target.value)} aria-invalid={!!fe.errors.tramite} />
+        </FormField>
+        <FormField label="Observaciones" {...fe.field("observaciones")}>
+          <Textarea id="observaciones" rows={3} value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} aria-invalid={!!fe.errors.observaciones} />
+        </FormField>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Alerta</Label>
-            <Input value={form.alerta} onChange={(e) => set("alerta", e.target.value)} placeholder="Ej. Sin avance 27 días" />
-          </div>
+          <FormField label="Alerta" {...fe.field("alerta")}>
+            <Input id="alerta" value={form.alerta} onChange={(e) => set("alerta", e.target.value)} placeholder="Ej. Sin avance 27 días" aria-invalid={!!fe.errors.alerta} />
+          </FormField>
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input
               type="checkbox"

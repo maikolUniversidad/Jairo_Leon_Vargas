@@ -8,9 +8,10 @@ import { UserPlus, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Field, FieldErrorSummary, useFieldErrors } from "@/components/ui/field";
 import { initials } from "@/lib/utils";
+import { newUserSchema } from "@/lib/validations";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -44,6 +45,7 @@ export function UsuariosManager({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const fe = useFieldErrors();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -56,42 +58,42 @@ export function UsuariosManager({
           <h3 className="mb-3 flex items-center gap-2 font-semibold">
             <UserPlus className="size-4" /> Crear usuario
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <Label htmlFor="u-name">Nombre</Label>
-              <Input id="u-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="u-email">Correo *</Label>
-              <Input id="u-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="u-pass">Contraseña *</Label>
-              <Input id="u-pass" type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="mín. 6" />
-            </div>
-            <div>
-              <Label>Rol</Label>
-              <Select value={roleKey} onValueChange={setRoleKey}>
+          <div ref={fe.containerRef} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Nombre" required {...fe.field("full_name")}>
+              <Input id="full_name" value={fullName} onChange={(e) => { fe.clear("full_name"); setFullName(e.target.value); }} aria-invalid={!!fe.errors.full_name} />
+            </Field>
+            <Field label="Correo" required {...fe.field("email")}>
+              <Input id="email" type="email" inputMode="email" autoCapitalize="none" value={email} onChange={(e) => { fe.clear("email"); setEmail(e.target.value); }} aria-invalid={!!fe.errors.email} />
+            </Field>
+            <Field label="Contraseña" required hint="Mínimo 6 caracteres" {...fe.field("password")}>
+              <Input id="password" type="text" value={password} onChange={(e) => { fe.clear("password"); setPassword(e.target.value); }} aria-invalid={!!fe.errors.password} />
+            </Field>
+            <Field label="Rol" {...fe.field("role_key")}>
+              <Select value={roleKey} onValueChange={(v) => { fe.clear("role_key"); setRoleKey(v); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {roles.map((r) => <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
+          <FieldErrorSummary className="mt-3" errors={fe.errors} onFocus={fe.focusFirstInvalid} />
           <Button
-            className="mt-4"
+            className="mt-4 w-full sm:w-auto"
             disabled={pending}
-            onClick={() =>
+            onClick={() => {
+              const payload = { email, password, full_name: fullName, role_key: roleKey };
+              if (!fe.validate(newUserSchema, payload)) return;
               start(async () => {
-                const res = await createUser({ email, password, full_name: fullName, role_key: roleKey });
+                const res = await createUser(payload);
                 if (res.ok) {
                   toast.success(res.message);
                   setEmail(""); setFullName(""); setPassword("");
+                  fe.clear();
                   router.refresh();
-                } else toast.error(res.message);
-              })
-            }
+                } else if (!fe.fromResult(res)) toast.error(res.message);
+              });
+            }}
           >
             {pending ? "Creando…" : "Crear usuario"}
           </Button>

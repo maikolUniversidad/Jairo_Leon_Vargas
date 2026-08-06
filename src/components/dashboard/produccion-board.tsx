@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Plus, Sparkles, Wand2, Search, Clapperboard, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +59,7 @@ export function ProduccionBoard({ projects, status }: { projects: VideoProject[]
         setPlataformas([]);
         router.push(`/dashboard/comunicaciones/produccion/${res.data.id}`);
       } else {
-        toast.error(res.message);
+        toast.error(describeFieldErrors(res) ?? res.message);
       }
     });
   }

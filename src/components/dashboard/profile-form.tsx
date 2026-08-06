@@ -8,7 +8,6 @@ import { Camera, Mail, ShieldCheck, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Field, FieldErrorSummary, useFieldErrors } from "@/components/ui/field";
 import { initials } from "@/lib/utils";
+import { profileSchema } from "@/lib/validations";
 import type { Profile } from "@/types/database";
 import { updateMyProfile, updateMyAvatar } from "@/actions/perfil";
 import { uploadAvatar } from "@/lib/upload-avatar";
@@ -41,6 +42,7 @@ export function ProfileForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [uploading, setUploading] = useState(false);
+  const fe = useFieldErrors();
 
   const [avatar, setAvatar] = useState(profile?.avatar_url ?? "");
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -72,20 +74,24 @@ export function ProfileForm({
   }
 
   function save() {
+    const payload = {
+      full_name: fullName,
+      phone,
+      cargo,
+      documento,
+      direccion,
+      bio,
+      area_id: areaId === NO_AREA ? "" : areaId,
+      fecha_ingreso: fechaIngreso,
+      avatar_url: avatar,
+    };
+    // Mismo esquema que el server action: señala el campo exacto al instante.
+    if (!fe.validate(profileSchema, payload)) return;
+
     start(async () => {
-      const res = await updateMyProfile({
-        full_name: fullName,
-        phone,
-        cargo,
-        documento,
-        direccion,
-        bio,
-        area_id: areaId === NO_AREA ? "" : areaId,
-        fecha_ingreso: fechaIngreso,
-        avatar_url: avatar,
-      });
-      if (res.ok) { toast.success(res.message); router.refresh(); }
-      else toast.error(res.message);
+      const res = await updateMyProfile(payload);
+      if (res.ok) { toast.success(res.message); fe.clear(); router.refresh(); }
+      else if (!fe.fromResult(res)) toast.error(res.message);
     });
   }
 
@@ -151,26 +157,21 @@ export function ProfileForm({
       {/* Formulario de datos */}
       <Card className="lg:col-span-2">
         <CardContent className="space-y-4 p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="p-name">Nombre completo *</Label>
-              <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="p-cargo">Cargo</Label>
-              <Input id="p-cargo" placeholder="Coordinador, gestor…" value={cargo} onChange={(e) => setCargo(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="p-doc">Documento</Label>
-              <Input id="p-doc" value={documento} onChange={(e) => setDocumento(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="p-phone">Teléfono</Label>
-              <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-            <div>
-              <Label>Área</Label>
-              <Select value={areaId} onValueChange={setAreaId}>
+          <div ref={fe.containerRef} className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nombre completo" required className="sm:col-span-2" {...fe.field("full_name")}>
+              <Input id="full_name" value={fullName} onChange={(e) => { fe.clear("full_name"); setFullName(e.target.value); }} autoComplete="name" aria-invalid={!!fe.errors.full_name} />
+            </Field>
+            <Field label="Cargo" {...fe.field("cargo")}>
+              <Input id="cargo" placeholder="Coordinador, gestor…" value={cargo} onChange={(e) => { fe.clear("cargo"); setCargo(e.target.value); }} aria-invalid={!!fe.errors.cargo} />
+            </Field>
+            <Field label="Documento" {...fe.field("documento")}>
+              <Input id="documento" inputMode="numeric" value={documento} onChange={(e) => { fe.clear("documento"); setDocumento(e.target.value); }} aria-invalid={!!fe.errors.documento} />
+            </Field>
+            <Field label="Teléfono" {...fe.field("phone")}>
+              <Input id="phone" type="tel" inputMode="tel" value={phone} onChange={(e) => { fe.clear("phone"); setPhone(e.target.value); }} autoComplete="tel" aria-invalid={!!fe.errors.phone} />
+            </Field>
+            <Field label="Área" {...fe.field("area_id")}>
+              <Select value={areaId} onValueChange={(v) => { fe.clear("area_id"); setAreaId(v); }}>
                 <SelectTrigger><SelectValue placeholder="Sin área" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_AREA}>Sin área</SelectItem>
@@ -179,22 +180,20 @@ export function ProfileForm({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="p-dir">Dirección</Label>
-              <Input id="p-dir" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="p-fecha">Fecha de ingreso</Label>
-              <Input id="p-fecha" type="date" value={fechaIngreso} onChange={(e) => setFechaIngreso(e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="p-bio">Sobre mí</Label>
-              <Textarea id="p-bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-            </div>
+            </Field>
+            <Field label="Dirección" className="sm:col-span-2" {...fe.field("direccion")}>
+              <Input id="direccion" value={direccion} onChange={(e) => { fe.clear("direccion"); setDireccion(e.target.value); }} aria-invalid={!!fe.errors.direccion} />
+            </Field>
+            <Field label="Fecha de ingreso" {...fe.field("fecha_ingreso")}>
+              <Input id="fecha_ingreso" type="date" value={fechaIngreso} onChange={(e) => { fe.clear("fecha_ingreso"); setFechaIngreso(e.target.value); }} aria-invalid={!!fe.errors.fecha_ingreso} />
+            </Field>
+            <Field label="Sobre mí" className="sm:col-span-2" {...fe.field("bio")}>
+              <Textarea id="bio" rows={3} value={bio} onChange={(e) => { fe.clear("bio"); setBio(e.target.value); }} aria-invalid={!!fe.errors.bio} />
+            </Field>
           </div>
+          <FieldErrorSummary errors={fe.errors} onFocus={fe.focusFirstInvalid} />
           <div className="flex justify-end">
-            <Button onClick={save} disabled={pending || uploading}>
+            <Button className="w-full sm:w-auto" onClick={save} disabled={pending || uploading}>
               <Save className="size-4" /> {pending ? "Guardando…" : "Guardar cambios"}
             </Button>
           </div>

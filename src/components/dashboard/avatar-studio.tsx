@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { describeFieldErrors } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,7 +72,7 @@ export function AvatarStudio({
       if (res.ok) {
         toast.success(res.message);
         router.push("/dashboard/comunicaciones/avatares");
-      } else toast.error(res.message);
+      } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -175,7 +176,7 @@ function GenerateTab({ data, canManage }: { data: AvatarStudioData; canManage: b
           settings: modelId ? { model: modelId } : undefined,
         });
         if (res.ok) { toast.success(res.message); setPrompt(""); setTitulo(""); router.refresh(); }
-        else toast.error(res.message);
+        else toast.error(describeFieldErrors(res) ?? res.message);
         return;
       }
       const res = await createGenerationJob({
@@ -188,7 +189,7 @@ function GenerateTab({ data, canManage }: { data: AvatarStudioData; canManage: b
         person_id: insight || undefined,
       });
       if (res.ok) { toast.success(res.message); setTitulo(""); router.refresh(); }
-      else toast.error(res.message);
+      else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -337,7 +338,7 @@ function JobCard({
     if (!confirm("¿Eliminar este trabajo?")) return;
     start(async () => {
       const res = await deleteJob(job.id, avatarId);
-      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -346,7 +347,7 @@ function JobCard({
     if (!url) return;
     start(async () => {
       const res = await completeJob(job.id, avatarId, url);
-      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -357,7 +358,7 @@ function JobCard({
       const up = await uploadFileViaSignedUrl("avatars", `${avatarId}/${job.tipo}`, file);
       if (!up.ok || !up.url) { toast.error(up.message || "No se pudo subir."); return; }
       const res = await completeJob(job.id, avatarId, up.url, { mime: file.type, size: file.size });
-      if (res.ok) { toast.success("Asset subido y trabajo listo."); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success("Asset subido y trabajo listo."); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -458,7 +459,7 @@ function AttachDialog({
       if (kind === "post") res = await attachJobToPost(job.id, { titulo });
       else if (kind === "calendar") res = await scheduleJobInCalendar(job.id, { titulo, canal, fecha_programada: fecha });
       else res = await attachJobToCobertura(job.id, coberturaId, fase);
-      if (res.ok) { toast.success(res.message); onClose(); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success(res.message); onClose(); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -576,7 +577,7 @@ function ProfileTab({ data, canManage }: { data: AvatarStudioData; canManage: bo
         modelo_imagen: modeloImagen,
         modelo_video: modeloVideo,
       });
-      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success(res.message); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -589,7 +590,7 @@ function ProfileTab({ data, canManage }: { data: AvatarStudioData; canManage: bo
         setValores(res.data.valores.join(", "));
         setEstiloVisual(res.data.estilo_visual);
         toast.success(res.message);
-      } else toast.error(res.message);
+      } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
@@ -600,7 +601,7 @@ function ProfileTab({ data, canManage }: { data: AvatarStudioData; canManage: bo
       const up = await uploadFileViaSignedUrl("avatars", `${avatar.id}/retrato`, file);
       if (!up.ok || !up.url) { toast.error(up.message || "No se pudo subir."); return; }
       const res = await updateAvatar(avatar.id, { avatar_url: up.url });
-      if (res.ok) { toast.success("Retrato actualizado."); router.refresh(); } else toast.error(res.message);
+      if (res.ok) { toast.success("Retrato actualizado."); router.refresh(); } else toast.error(describeFieldErrors(res) ?? res.message);
     });
   }
 
