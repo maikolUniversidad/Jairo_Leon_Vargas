@@ -1,60 +1,34 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  ArrowLeft, HardDrive, FolderOpen, Upload, FileText, X, MapPin, CalendarDays, RefreshCw,
-} from "lucide-react";
+import { ArrowLeft, CalendarDays, HardDrive, MapPin, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { CoberturaBoard } from "@/components/dashboard/cobertura-board";
 import { formatDate } from "@/lib/utils";
-import { uploadCoberturaFile } from "@/lib/upload";
 import {
-  updateCoberturaEstado, removeCoberturaFile, repairCoberturaDrive,
+  repairCoberturaDrive, updateCoberturaEstado,
   type Cobertura, type CoberturaFile, type Fase,
 } from "@/actions/coberturas";
-
-const FASES: { key: Fase; label: string; folder: keyof Cobertura; tone: string }[] = [
-  { key: "crudo", label: "Contenido Crudo", folder: "drive_crudo_id", tone: "border-t-amber-400" },
-  { key: "editado", label: "Contenido Editado", folder: "drive_editado_id", tone: "border-t-blue-400" },
-  { key: "aprobado", label: "Contenido Aprobado", folder: "drive_aprobado_id", tone: "border-t-emerald-500" },
-];
 
 const ESTADOS = ["planeada", "en_curso", "en_edicion", "en_aprobacion", "publicada", "archivada"];
 
 export function CoberturaDetail({
   cobertura,
-  files: filesIni,
+  files,
 }: {
   cobertura: Cobertura;
   files: Record<Fase, CoberturaFile[]>;
 }) {
   const router = useRouter();
   const [, start] = useTransition();
-  const [files, setFiles] = useState(filesIni);
-  const [uploadingFase, setUploadingFase] = useState<Fase | null>(null);
-
-  async function handleUpload(fase: Fase, list: FileList) {
-    setUploadingFase(fase);
-    try {
-      let okCount = 0;
-      for (const file of Array.from(list)) {
-        const res = await uploadCoberturaFile(cobertura.id, fase, file);
-        if (res.ok) okCount++;
-        else toast.error(`${file.name}: ${res.message}`);
-      }
-      if (okCount > 0) { toast.success(`${okCount} archivo(s) agregado(s).`); router.refresh(); }
-    } finally {
-      setUploadingFase(null);
-    }
-  }
 
   return (
     <>
@@ -106,64 +80,7 @@ export function CoberturaDetail({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {FASES.map((f) => {
-          const list = files[f.key];
-          const folderId = cobertura[f.folder] as string | null;
-          return (
-            <div key={f.key} className={`flex flex-col rounded-xl border border-t-4 bg-muted/20 ${f.tone}`}>
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="font-semibold">{f.label}</span>
-                <Badge variant="muted">{list.length}</Badge>
-              </div>
-
-              <div className="flex flex-1 flex-col gap-2 px-3 pb-3">
-                {list.length === 0 && (
-                  <p className="px-2 py-6 text-center text-xs text-muted-foreground/60">Sin archivos</p>
-                )}
-                {list.map((file) => (
-                  <div key={file.id} className="flex items-center gap-2 rounded-lg border bg-background p-2 text-sm">
-                    <FileText className="size-4 shrink-0 text-primary" />
-                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">
-                      {file.nombre}
-                    </a>
-                    <button
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => start(async () => {
-                        const res = await removeCoberturaFile(file.id, file.storage_path);
-                        if (res.ok) setFiles((p) => ({ ...p, [f.key]: p[f.key].filter((x) => x.id !== file.id) }));
-                        else toast.error(res.message);
-                      })}
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                ))}
-
-                <label className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50">
-                  <Upload className="size-4" />
-                  {uploadingFase === f.key ? "Subiendo…" : "Subir archivos"}
-                  <input
-                    type="file" multiple className="hidden"
-                    disabled={uploadingFase !== null}
-                    onChange={(e) => { if (e.target.files?.length) handleUpload(f.key, e.target.files); e.target.value = ""; }}
-                  />
-                </label>
-
-                {folderId && (
-                  <a
-                    href={`https://drive.google.com/drive/folders/${folderId}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary"
-                  >
-                    <FolderOpen className="size-3.5" /> Ver en Drive
-                  </a>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <CoberturaBoard cobertura={cobertura} files={files} />
     </>
   );
 }

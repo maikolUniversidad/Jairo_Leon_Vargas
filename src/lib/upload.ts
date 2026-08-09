@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { createSignedUpload } from "@/actions/storage";
 import { finalizeToDrive } from "@/actions/google";
-import { addCoberturaFile, type Fase } from "@/actions/coberturas";
 
 type Bucket = "task-files" | "contact-files" | "workspace-covers" | "coberturas" | "contenido" | "avatars";
 
@@ -51,33 +50,5 @@ export async function uploadFileViaSignedUrl(
   };
 }
 
-/**
- * Sube un archivo de cobertura a la fase indicada (crudo/editado/aprobado):
- * va al bucket de staging y el servidor lo mueve a la subcarpeta de Drive.
- */
-export async function uploadCoberturaFile(
-  coberturaId: string,
-  fase: Fase,
-  file: File,
-): Promise<{ ok: boolean; message?: string }> {
-  if (!file || file.size === 0) return { ok: false, message: "Archivo vacío." };
-  const signed = await createSignedUpload("coberturas", `${coberturaId}/${fase}`, file.name);
-  if (!signed.ok || !signed.data) return { ok: false, message: signed.message };
-
-  const supabase = createClient();
-  const { error } = await supabase.storage
-    .from("coberturas")
-    .uploadToSignedUrl(signed.data.path, signed.data.token, file, {
-      contentType: file.type || "application/octet-stream",
-    });
-  if (error) return { ok: false, message: `No se pudo subir: ${error.message}` };
-
-  return addCoberturaFile({
-    cobertura_id: coberturaId,
-    fase,
-    path: signed.data.path,
-    name: file.name,
-    mime: file.type,
-    size: file.size,
-  });
-}
+// Las subidas de coberturas viven en `lib/upload-cobertura.ts`: usan sesiones
+// reanudables contra Drive para no cargar el archivo en la función de Vercel.

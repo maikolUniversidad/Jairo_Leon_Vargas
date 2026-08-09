@@ -71,6 +71,23 @@ export async function getDrive(redirectUri = "http://localhost"): Promise<drive_
   return google.drive({ version: "v3", auth: client });
 }
 
+/**
+ * Access token de la cuenta conectada. Necesario para las llamadas que googleapis
+ * no cubre (sesiones de subida reanudable, descarga de miniaturas).
+ */
+async function getAccessToken(): Promise<string | null> {
+  const refresh = await getRefreshToken();
+  if (!refresh) return null;
+  const client = getOAuthClient("http://localhost");
+  client.setCredentials({ refresh_token: refresh });
+  try {
+    const { token } = await client.getAccessToken();
+    return token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /* ─────────── Conexión: intercambia código, guarda token, crea árbol ─────────── */
 
 export async function handleOAuthCallback(code: string, redirectUri: string): Promise<DriveConfig> {
@@ -238,4 +255,175 @@ export async function uploadBufferToDrive(opts: {
   }
   const link = created.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view`;
   return { id, link };
+}
+
+/* ─────────── Operaciones sobre archivos existentes ─────────── */
+
+export function driveViewLink(fileId: string): string {
+  return `https://drive.google.com/file/d/${fileId}/view`;
+}
+
+/** Da permiso de lectura por enlace. Silencioso: el archivo sigue siendo usable sin él. */
+export async function makeDriveFilePublic(fileId: string): Promise<void> {
+  const drive = await getDrive();
+  if (!drive) return;
+  try {
+    await drive.permissions.create({ fileId, requestBody: { role: "reader", type: "anyone" } });
+  } catch {
+    /* ya era público, o la cuenta no puede compartir */
+  }
+}
+
+/** Mueve un archivo a otra carpeta (quita todos sus padres actuales). */
+export async function moveDriveFile(fileId: string, toFolderId: string): Promise<boolean> {
+  const drive = await getDrive();
+  if (!drive) return false;
+  try {
+    const current = await drive.files.get({ fileId, fields: "parents" });
+    const parents = current.data.parents ?? [];
+    if (parents.length === 1 && parents[0] === toFolderId) return true;
+    await drive.files.update({
+      fileId,
+      addParents: toFolderId,
+      removeParents: parents.join(","),
+      fields: "id",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function renameDriveFile(fileId: string, name: string): Promise<boolean> {
+  const drive = await getDrive();
+  if (!drive) return false;
+  try {
+    await drive.files.update({ fileId, requestBody: { name }, fields: "id" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteDriveFile(fileId: string): Promise<boolean> {
+  const drive = await getDrive();
+  if (!drive) return false;
+  try {
+    await drive.files.delete({ fileId });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* ─────────── Miniaturas ─────────── */
+
+export interface DriveThumbnail {
+  body: ArrayBuffer;
+  contentType: string;
+}
+
+/**
+ * Descarga la miniatura que Drive genera para imágenes, video, PDF y Office.
+ * Devuelve null si el archivo no tiene miniatura todavía (recién subido) o no existe.
+ */
+export async function getDriveThumbnail(fileId: string, width: number): Promise<DriveThumbnail | null> {
+  const drive = await getDrive();
+  if (!drive) return null;
+
+  let link: string | null = null;
+  try {
+    const meta = await drive.files.get({ fileId, fields: "thumbnailLink" });
+    link = meta.data.thumbnailLink ?? null;
+  } catch {
+    return null;
+  }
+  if (!link) return null;
+
+  // El enlace termina en `=s220`; se sustituye por el ancho pedido.
+  const sized = link.replace(/=s\d+(-c)?$/, `=w${width}`);
+  const token = await getAccessToken();
+
+  for (const headers of [token ? { Authorization: `Bearer ${token}` } : undefined, undefined]) {
+    try {
+      const res = await fetch(sized, headers ? { headers } : undefined);
+      if (!res.ok) continue;
+      return {
+        body: await res.arrayBuffer(),
+        contentType: res.headers.get("content-type") ?? "image/jpeg",
+      };
+    } catch {
+      /* prueba la siguiente variante */
+    }
+  }
+  return null;
+}
+
+/* ─────────── Subida reanudable (el navegador envía los bytes) ─────────── */
+
+const RESUMABLE_ENDPOINT = "https://www.googleapis.com/upload/drive/v3/files";
+
+/**
+ * Abre una sesión de subida reanudable y devuelve su URL. El navegador sube los
+ * trozos directamente a Google: no pasan por Vercel, así que no hay límite de
+ * tamaño ni de duración. La URL autoriza por sí misma, no lleva el token.
+ */
+export async function createResumableUpload(opts: {
+  folderId: string;
+  name: string;
+  mime: string;
+  size: number;
+}): Promise<string | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  const mime = opts.mime || "application/octet-stream";
+  try {
+    const res = await fetch(`${RESUMABLE_ENDPOINT}?uploadType=resumable&fields=id,webViewLink`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": mime,
+        "X-Upload-Content-Length": String(opts.size),
+      },
+      body: JSON.stringify({ name: opts.name, parents: [opts.folderId], mimeType: mime }),
+    });
+    if (!res.ok) return null;
+    return res.headers.get("location");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Igual que la anterior pero sobre un archivo existente: sustituye su contenido
+ * conservando id y enlace. Drive guarda la versión previa en su historial.
+ */
+export async function createResumableUpdate(opts: {
+  fileId: string;
+  mime: string;
+  size: number;
+}): Promise<string | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  const mime = opts.mime || "application/octet-stream";
+  try {
+    const res = await fetch(
+      `${RESUMABLE_ENDPOINT}/${opts.fileId}?uploadType=resumable&fields=id,webViewLink`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Upload-Content-Type": mime,
+          "X-Upload-Content-Length": String(opts.size),
+        },
+        body: JSON.stringify({ mimeType: mime }),
+      },
+    );
+    if (!res.ok) return null;
+    return res.headers.get("location");
+  } catch {
+    return null;
+  }
 }
