@@ -114,9 +114,11 @@ for (const u of USERS) {
 
   // 3) Deja exactamente el rol deseado (elimina el 'consulta' por defecto del trigger).
   await admin.from("user_roles").delete().eq("user_id", userId);
+  // `role_key` es obligatorio: can_view_module() y src/lib/auth.ts unen por él
+  // contra role_permissions. Sin role_key el usuario entra a un dashboard vacío.
   const { error: roleErr } = await admin
     .from("user_roles")
-    .insert({ user_id: userId, role: u.role });
+    .insert({ user_id: userId, role: u.role, role_key: u.role });
   if (roleErr) console.error(`  · rol ${u.role} para ${u.email}: ${roleErr.message}`);
 
   console.log(`✓ ${u.full_name.padEnd(26)} ${u.email.padEnd(32)} [${u.role}]`);

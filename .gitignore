@@ -42,3 +42,9 @@ yarn-error.log*
 
 # Superpowers brainstorm (temporal)
 .superpowers/
+
+# QA: los reportes se regeneran en cada corrida (docs/qa/README.md sí se versiona)
+/docs/qa/db-qa-latest.json
+/docs/qa/db-qa-latest.md
+/docs/qa/preflight-latest.md
+/docs/qa/coverage/
