@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
-import { extraerFicha as extraerConIA } from "@/lib/ia/extraer-ficha";
+import { extraerDeDictado, extraerFicha as extraerConIA } from "@/lib/ia/extraer-ficha";
 import {
   type CampoPregunta,
   type FichaExtraida,
@@ -73,7 +73,9 @@ export async function guardarRespuesta(input: {
   );
   if (error) return { ok: false, message: "No se pudo guardar la respuesta." };
 
-  revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
+  // A propósito SIN revalidatePath: revalidar en medio del cuestionario hace que
+  // el server component mande un arreglo de respuestas nuevo, y el diálogo se
+  // reinicia justo cuando la persona está avanzando. Se revalida al terminar.
   return { ok: true, message: "Respuesta guardada." };
 }
 
@@ -92,6 +94,103 @@ export async function borrarRespuesta(
 
   revalidatePath(`/dashboard/comunicaciones/coberturas/${coberturaId}`);
   return { ok: true, message: "Respuesta borrada." };
+}
+
+/**
+ * Guarda una grabación corrida y reparte lo dicho entre los campos.
+ *
+ * Quedan las dos cosas: la transcripción completa sin tocar en
+ * `cobertura_dictados`, y lo clasificado por pregunta en `cobertura_respuestas`.
+ * Lo primero es el registro de lo que se contó; lo segundo, lo que alimenta la
+ * ficha y lo que se revisa campo por campo antes de guardar.
+ */
+export async function guardarDictado(input: {
+  cobertura_id: string;
+  transcripcion: string;
+  duracion_seg?: number | null;
+}): Promise<ActionResult<FichaExtraida>> {
+  const texto = input.transcripcion.trim();
+  if (!texto) return { ok: false, message: "No se transcribió nada." };
+
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sesión no válida." };
+
+  const supabase = await createClient();
+
+  // La transcripción se guarda ANTES de llamar a la IA: si el modelo falla o
+  // tarda, lo que la persona dijo no se pierde.
+  const { error } = await supabase.from("cobertura_dictados").insert({
+    cobertura_id: input.cobertura_id,
+    transcripcion: texto,
+    duracion_seg: input.duracion_seg ?? null,
+    created_by: user.id,
+  });
+  if (error) return { ok: false, message: "No se pudo guardar lo dictado." };
+
+  const preguntas = await listPreguntas();
+  if (preguntas.length === 0) {
+    return { ok: false, message: "No hay preguntas configuradas." };
+  }
+
+  let ficha: FichaExtraida;
+  try {
+    ficha = await extraerDeDictado(
+      texto,
+      preguntas.map((p) => ({ pregunta: p.pregunta, campo: p.campo })),
+    );
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : "No se pudo repartir lo dictado.",
+    };
+  }
+
+  if (Object.keys(ficha).length === 0) {
+    return { ok: false, message: "La IA no pudo sacar información de lo dictado." };
+  }
+
+  // Cada campo con contenido se guarda como la respuesta de su pregunta: así el
+  // carrusel muestra qué quedó cubierto y qué no se alcanzó a contar.
+  const porCampo = new Map(preguntas.map((p) => [p.campo, p.id]));
+  const filas = Object.entries(ficha)
+    .map(([campo, valor]) => {
+      const preguntaId = porCampo.get(campo as CampoPregunta);
+      if (!preguntaId || valor === undefined || valor === null) return null;
+      const transcripcion = Array.isArray(valor) ? valor.join(", ") : String(valor);
+      return transcripcion.trim()
+        ? {
+            cobertura_id: input.cobertura_id,
+            pregunta_id: preguntaId,
+            transcripcion,
+            created_by: user.id,
+          }
+        : null;
+    })
+    .filter((f): f is NonNullable<typeof f> => f !== null);
+
+  if (filas.length > 0) {
+    await supabase
+      .from("cobertura_respuestas")
+      .upsert(filas, { onConflict: "cobertura_id,pregunta_id" });
+  }
+
+  revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
+  return { ok: true, message: "Listo. Revisa lo que se entendió.", data: ficha };
+}
+
+/** El dictado más reciente de una cobertura, para poder releerlo. */
+export async function ultimoDictado(
+  coberturaId: string,
+): Promise<{ transcripcion: string; created_at: string } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("cobertura_dictados")
+    .select("transcripcion, created_at")
+    .eq("cobertura_id", coberturaId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as { transcripcion: string; created_at: string } | null) ?? null;
 }
 
 /**

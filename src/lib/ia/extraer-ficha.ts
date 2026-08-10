@@ -186,9 +186,12 @@ export async function extraerFicha(
     [HERRAMIENTA],
   );
 
+  return leerLlamada(toolCalls);
+}
+
+function leerLlamada(toolCalls: { function: { name: string; arguments: string } }[]): FichaExtraida {
   const llamada = toolCalls.find((t) => t.function?.name === "guardar_ficha");
   if (!llamada) return {};
-
   try {
     return normalizarFicha(JSON.parse(llamada.function.arguments));
   } catch {
@@ -196,4 +199,59 @@ export async function extraerFicha(
     // en vez de tumbar el cuestionario entero.
     return {};
   }
+}
+
+/* ─────────────────────── Un solo audio largo ─────────────────────── */
+
+const SISTEMA_DICTADO = `Eres el asistente de una Unidad de Trabajo Legislativo en Bogotá.
+
+Recibes la transcripción de UNA grabación corrida: alguien acaba de volver de una
+jornada en territorio y la contó de un tirón, siguiendo unas preguntas como guion.
+Habla de varios temas en desorden, se devuelve, se corrige y deja frases a medias.
+
+Tu trabajo es repartir lo que dijo en los campos que correspondan.
+
+Reglas:
+- Redacta en español de Colombia, claro y sobrio. Sin adjetivos de campaña.
+- Usa SOLO lo que la persona dijo. Nunca inventes datos, cifras ni nombres.
+- Un mismo tema puede estar contado en varios momentos de la grabación: júntalo.
+- Si sobre un campo no dijo nada, OMÍTELO por completo. No lo llenes por rellenar.
+- Respeta el formato de cada campo: los de lista van como lista, el público como
+  número entero, la fecha SIEMPRE en ISO YYYY-MM-DD.
+- Si lo dicho no permite saber la fecha con certeza, omítela: una fecha mal
+  interpretada es peor que ninguna.
+- Llama siempre a la herramienta guardar_ficha.`;
+
+/**
+ * Reparte una grabación corrida entre los campos, guiándose por las preguntas
+ * que se le mostraron a quien habló.
+ *
+ * Es el modo principal: hablar seguido sale más natural que contestar de a una,
+ * y la transcripción completa se conserva aparte, sin resumir.
+ */
+export async function extraerDeDictado(
+  transcripcion: string,
+  preguntas: { pregunta: string; campo: CampoPregunta }[],
+  modelo = "auto",
+): Promise<FichaExtraida> {
+  const texto = transcripcion.trim();
+  if (!texto) return {};
+
+  const guion = preguntas
+    .map((p) => `- ${p.pregunta}  →  campo "${p.campo}"`)
+    .join("\n");
+
+  const { toolCalls } = await completeWithTools(
+    modelo,
+    [
+      { role: "system", content: SISTEMA_DICTADO },
+      {
+        role: "user",
+        content: `Preguntas que se le mostraron como guion:\n${guion}\n\nLo que dijo:\n${texto}`,
+      },
+    ],
+    [HERRAMIENTA],
+  );
+
+  return leerLlamada(toolCalls);
 }
