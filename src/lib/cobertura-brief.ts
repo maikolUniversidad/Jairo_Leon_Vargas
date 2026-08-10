@@ -36,6 +36,9 @@ export interface BriefArchivo {
   nombre: string;
   mime?: string | null;
   descripcion?: string | null;
+  /** Lo que detectó el análisis automático de la pieza. */
+  analisis?: string | null;
+  analisis_etiquetas?: string[] | null;
 }
 
 const FASE_LABEL: Record<BriefArchivo["fase"], string> = {
@@ -58,6 +61,12 @@ const ENCABEZADO =
   "Úsala como contexto para lo que te pida a continuación (redactar publicaciones, " +
   "un boletín, un guion, o resumir la jornada). Si algo no aparece aquí, dímelo en " +
   "vez de inventarlo.";
+
+const AVISO_ANALISIS =
+  "Las descripciones del material marcadas como análisis las generó un modelo " +
+  "automáticamente y pueden equivocarse; las de los videos se basan en un solo " +
+  "fotograma, no en el clip completo. Trátalas como pistas, no como hechos " +
+  "verificados, y no afirmes quién aparece en una imagen.";
 
 const vacio = (v: unknown): boolean =>
   v === null || v === undefined || (typeof v === "string" && v.trim() === "");
@@ -114,6 +123,35 @@ function seccionAsistentes(asistentes: BriefAsistente[]): string | null {
   return `### Quiénes estuvieron\n${lineas.join("\n")}`;
 }
 
+/** Lo que se sabe de una pieza: lo escrito a mano manda sobre lo automático. */
+function detallePieza(a: BriefArchivo): string | null {
+  const manual = vacio(a.descripcion) ? null : a.descripcion!.trim();
+  const automatico = vacio(a.analisis) ? null : a.analisis!.trim();
+  // Si alguien se tomó el trabajo de describir la pieza, esa descripción va
+  // primero; el análisis solo completa, y solo si dice algo distinto.
+  if (manual && automatico && automatico !== manual) return `${manual} — Análisis: ${automatico}`;
+  if (manual) return manual;
+  if (automatico) return `Análisis: ${automatico}`;
+  return null;
+}
+
+/** Todas las etiquetas detectadas en el material, de más a menos frecuentes. */
+function etiquetasDetectadas(archivos: BriefArchivo[]): string | null {
+  const conteo = new Map<string, number>();
+  for (const a of archivos) {
+    for (const e of a.analisis_etiquetas ?? []) {
+      const limpia = e.trim().toLowerCase();
+      if (limpia) conteo.set(limpia, (conteo.get(limpia) ?? 0) + 1);
+    }
+  }
+  if (conteo.size === 0) return null;
+  const ordenadas = [...conteo.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+    .slice(0, 15)
+    .map(([e]) => e);
+  return `- **Temas detectados en el material:** ${ordenadas.join(", ")}`;
+}
+
 function seccionContenido(archivos: BriefArchivo[]): string | null {
   if (archivos.length === 0) {
     return "### Material disponible\nTodavía no se ha subido contenido a esta cobertura.";
@@ -125,12 +163,17 @@ function seccionContenido(archivos: BriefArchivo[]): string | null {
     if (dellaFase.length === 0) continue;
 
     partes.push(`- **${FASE_LABEL[fase]}:** ${resumirTipos(dellaFase)}`);
-    // Solo las piezas con descripción: el resto son nombres de archivo de cámara
-    // que no le dicen nada útil a la IA.
-    for (const a of dellaFase.filter((x) => !vacio(x.descripcion))) {
-      partes.push(`  - ${a.nombre.trim()}: ${a.descripcion!.trim()}`);
+    // Se listan las piezas de las que se sabe algo, sea escrito a mano o
+    // detectado por el análisis. Un nombre de archivo de cámara no aporta nada.
+    for (const a of dellaFase) {
+      const detalle = detallePieza(a);
+      if (detalle) partes.push(`  - ${a.nombre.trim()}: ${detalle}`);
     }
   }
+
+  const etiquetas = etiquetasDetectadas(archivos);
+  if (etiquetas) partes.push(etiquetas);
+
   return partes.join("\n");
 }
 
@@ -150,8 +193,13 @@ export function construirBrief(
     listaEtiquetas("Hashtags", cobertura.hashtags),
   ].filter(Boolean);
 
+  // El aviso solo aparece si de verdad hay material analizado: si no, sería una
+  // advertencia sobre algo que no está en el texto.
+  const hayAnalisis = archivos.some((a) => !vacio(a.analisis));
+
   const secciones = [
     ENCABEZADO,
+    hayAnalisis ? AVISO_ANALISIS : null,
     `## Cobertura: ${cobertura.nombre.trim()}`,
     ficha.length > 0 ? ficha.join("\n") : null,
     bloque("De qué se trata", cobertura.descripcion),

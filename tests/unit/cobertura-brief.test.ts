@@ -128,3 +128,47 @@ describe("construirBrief · material", () => {
     expect(texto).toContain("**Contenido Crudo:** 1 foto");
   });
 });
+
+describe("construirBrief · análisis automático", () => {
+  const analizado: BriefArchivo = {
+    fase: "crudo",
+    nombre: "DSC_9.jpg",
+    mime: "image/jpeg",
+    analisis: "Vecinos reunidos en un salón comunal. Utilidad: sirve de apoyo.",
+    analisis_etiquetas: ["comunidad", "reunion"],
+  };
+
+  it("lista piezas que solo tienen análisis, no solo las descritas a mano", () => {
+    const texto = construirBrief(minima, [], [analizado]);
+    expect(texto).toContain("DSC_9.jpg: Análisis: Vecinos reunidos");
+  });
+
+  it("la descripción escrita a mano va primero y el análisis la completa", () => {
+    const texto = construirBrief(minima, [], [{ ...analizado, descripcion: "Foto de portada." }]);
+    expect(texto).toContain("DSC_9.jpg: Foto de portada. — Análisis: Vecinos reunidos");
+  });
+
+  it("no repite el texto cuando descripción y análisis coinciden", () => {
+    const texto = construirBrief(minima, [], [{ ...analizado, descripcion: analizado.analisis }]);
+    expect(texto).not.toContain("— Análisis:");
+  });
+
+  it("agrega las etiquetas detectadas y las ordena por frecuencia", () => {
+    const texto = construirBrief(minima, [], [
+      analizado,
+      { ...analizado, nombre: "b.jpg", analisis_etiquetas: ["reunion", "andenes"] },
+    ]);
+    expect(texto).toContain("**Temas detectados en el material:** reunion,");
+  });
+
+  it("advierte que el análisis es automático, pero solo si hay alguno", () => {
+    expect(construirBrief(minima, [], [analizado])).toContain("las generó un modelo");
+    expect(construirBrief(minima, [], [{ fase: "crudo", nombre: "a.jpg", mime: "image/jpeg" }]))
+      .not.toContain("las generó un modelo");
+  });
+
+  it("no inventa la sección de temas si ninguna pieza trae etiquetas", () => {
+    const texto = construirBrief(minima, [], [{ ...analizado, analisis_etiquetas: [] }]);
+    expect(texto).not.toContain("Temas detectados");
+  });
+});
