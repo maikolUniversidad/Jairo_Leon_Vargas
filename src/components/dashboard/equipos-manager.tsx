@@ -3,18 +3,22 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Pencil, Plus, X } from "lucide-react";
+import { Check, Pencil, Plus, UserPlus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { createEquipo, toggleEquipo, updateEquipo } from "@/actions/equipos";
 import {
+  addIntegrante, createEquipo, removeIntegrante, toggleEquipo, updateEquipo,
+} from "@/actions/equipos";
+import {
+  ROLES_INTEGRANTE,
   TIPOS_EQUIPO,
   TIPO_EQUIPO_LABEL,
-  type EquipoCobertura,
+  type EquipoConIntegrantes,
   type TipoEquipo,
+  type UsuarioPlataforma,
 } from "@/lib/equipos-shared";
 
 interface Borrador {
@@ -30,15 +34,49 @@ const VACIO: Borrador = { nombre: "", tipo: "mixto" };
  * No hay borrado: los equipos se desactivan. Borrar uno dejaría sin atribución
  * al material que ya grabó, y ese registro histórico es el punto de la función.
  */
-export function EquiposManager({ equipos }: { equipos: EquipoCobertura[] }) {
+export function EquiposManager({
+  equipos,
+  usuarios,
+}: {
+  equipos: EquipoConIntegrantes[];
+  usuarios: UsuarioPlataforma[];
+}) {
   const router = useRouter();
   const [, start] = useTransition();
   const [nuevo, setNuevo] = useState<Borrador>(VACIO);
   const [editando, setEditando] = useState<string | null>(null);
   const [borrador, setBorrador] = useState<Borrador>(VACIO);
   const [errores, setErrores] = useState<Record<string, string>>({});
+  const [sumandoEn, setSumandoEn] = useState<string | null>(null);
+  const [persona, setPersona] = useState("");
+  const [rolPersona, setRolPersona] = useState("");
 
   const refrescar = () => start(() => router.refresh());
+
+  const sumar = (equipoId: string) =>
+    start(async () => {
+      const res = await addIntegrante(equipoId, persona, rolPersona || null);
+      if (res.ok) {
+        setPersona("");
+        setRolPersona("");
+        setSumandoEn(null);
+        toast.success(res.message);
+        refrescar();
+      } else {
+        toast.error(res.message);
+      }
+    });
+
+  const quitar = (id: string) =>
+    start(async () => {
+      const res = await removeIntegrante(id);
+      if (res.ok) {
+        toast.success(res.message);
+        refrescar();
+      } else {
+        toast.error(res.message);
+      }
+    });
 
   const crear = () => {
     setErrores({});
@@ -133,7 +171,8 @@ export function EquiposManager({ equipos }: { equipos: EquipoCobertura[] }) {
         ) : (
           <ul className="divide-y rounded-lg border">
             {equipos.map((eq) => (
-              <li key={eq.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
+              <li key={eq.id} className="px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
                 {editando === eq.id ? (
                   <>
                     <div className="min-w-[10rem] flex-1">
@@ -194,6 +233,74 @@ export function EquiposManager({ equipos }: { equipos: EquipoCobertura[] }) {
                     </Button>
                   </>
                 )}
+                </div>
+
+                {/* Integrantes: quién graba y quién fotografía en este equipo. */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-1">
+                  {eq.integrantes.length === 0 && sumandoEn !== eq.id && (
+                    <span className="text-[11px] text-muted-foreground/70">Sin integrantes</span>
+                  )}
+                  {eq.integrantes.map((i) => (
+                    <span
+                      key={i.id}
+                      className="flex items-center gap-1 rounded-full border bg-background py-0.5 pl-2 pr-1 text-[11px]"
+                    >
+                      {i.nombre}
+                      {i.rol && <span className="text-muted-foreground">· {i.rol}</span>}
+                      <button
+                        type="button"
+                        onClick={() => quitar(i.id)}
+                        aria-label={`Quitar a ${i.nombre} de ${eq.nombre}`}
+                        className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {sumandoEn === eq.id ? (
+                    <>
+                      <select
+                        value={persona}
+                        onChange={(e) => setPersona(e.target.value)}
+                        aria-label="Persona"
+                        className="h-7 rounded border bg-background px-1.5 text-[11px]"
+                      >
+                        <option value="">Elegir persona…</option>
+                        {usuarios
+                          .filter((u) => !eq.integrantes.some((i) => i.user_id === u.id))
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>{u.nombre}</option>
+                          ))}
+                      </select>
+                      <select
+                        value={rolPersona}
+                        onChange={(e) => setRolPersona(e.target.value)}
+                        aria-label="Rol en el equipo"
+                        className="h-7 rounded border bg-background px-1.5 text-[11px]"
+                      >
+                        <option value="">Sin rol</option>
+                        {ROLES_INTEGRANTE.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" className="h-7" disabled={!persona} onClick={() => sumar(eq.id)}>
+                        <Check className="size-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7" onClick={() => setSumandoEn(null)}>
+                        <X className="size-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setSumandoEn(eq.id); setPersona(""); setRolPersona(""); }}
+                      className="flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60"
+                    >
+                      <UserPlus className="size-3" /> Sumar persona
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

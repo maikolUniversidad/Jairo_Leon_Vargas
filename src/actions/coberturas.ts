@@ -95,6 +95,17 @@ export interface CoberturaFile {
   equipo_nombre: string | null;
   dispositivo: string | null;
   tipo_contenido: TipoContenido;
+  /* ── Autoría (migración 0037) ── */
+  /**
+   * `created_by` es quién apretó el botón: auditoría, no se toca.
+   * `responsable_id` es a quién se le acredita el material; arranca igual pero
+   * se puede cambiar, porque es normal subir lo que grabó otra persona.
+   */
+  created_by: string | null;
+  responsable_id: string | null;
+  /** Resueltos desde `profiles`; null si el usuario ya no existe. */
+  subido_por_nombre: string | null;
+  responsable_nombre: string | null;
 }
 
 /** Metadata que la pantalla de revisión asigna a cada archivo antes de subirlo. */
@@ -126,11 +137,40 @@ async function validarMetadata(
 }
 
 /** Aplana el join de equipo en la forma plana que consume la interfaz. */
-function aplanarFile(row: Record<string, unknown>): CoberturaFile {
+function aplanarFile(
+  row: Record<string, unknown>,
+  nombres?: Map<string, string>,
+): CoberturaFile {
   const equipo = row.equipos_cobertura as { nombre: string } | null | undefined;
   const resto = { ...row };
   delete resto.equipos_cobertura;
-  return { ...resto, equipo_nombre: equipo?.nombre ?? null } as CoberturaFile;
+  const creador = (row.created_by as string | null) ?? null;
+  const responsable = (row.responsable_id as string | null) ?? null;
+  return {
+    ...resto,
+    equipo_nombre: equipo?.nombre ?? null,
+    subido_por_nombre: creador ? (nombres?.get(creador) ?? null) : null,
+    responsable_nombre: responsable ? (nombres?.get(responsable) ?? null) : null,
+  } as CoberturaFile;
+}
+
+/**
+ * Nombres de los perfiles indicados. `cobertura_files` apunta a auth.users, no
+ * a profiles, así que PostgREST no puede incrustarlos y hay que resolverlos.
+ */
+async function nombresDe(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: (string | null)[],
+): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter(Boolean) as string[])];
+  const mapa = new Map<string, string>();
+  if (unicos.length === 0) return mapa;
+  const { data } = await supabase.from("profiles").select("id, full_name").in("id", unicos);
+  for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
+    const nombre = p.full_name?.trim();
+    if (nombre) mapa.set(p.id, nombre);
+  }
+  return mapa;
 }
 
 /** Columnas del archivo más el nombre del equipo que lo produjo. */
@@ -168,9 +208,15 @@ export async function getCoberturaDetail(id: string): Promise<{
       .eq("cobertura_id", id)
       .order("created_at", { ascending: true }),
   ]);
+  const filas = (files as Record<string, unknown>[]) ?? [];
+  const nombres = await nombresDe(
+    supabase,
+    filas.flatMap((r) => [r.created_by as string | null, r.responsable_id as string | null]),
+  );
+
   const grouped: Record<Fase, CoberturaFile[]> = { crudo: [], editado: [], aprobado: [] };
-  for (const row of (files as Record<string, unknown>[]) ?? []) {
-    const f = aplanarFile(row);
+  for (const row of filas) {
+    const f = aplanarFile(row, nombres);
     grouped[f.fase]?.push(f);
   }
   return {
@@ -560,6 +606,8 @@ export async function addCoberturaFile(input: {
       tipo_contenido: input.meta.tipo_contenido,
       dispositivo: input.meta.dispositivo ?? null,
       created_by: user?.id ?? null,
+      // Arranca acreditado a quien sube; se puede cambiar desde la ficha.
+      responsable_id: user?.id ?? null,
     })
     .select(SELECT_FILE)
     .single();
@@ -692,6 +740,8 @@ export async function finishCoberturaUpload(input: {
       tipo_contenido: input.meta.tipo_contenido,
       dispositivo: input.meta.dispositivo ?? null,
       created_by: user?.id ?? null,
+      // Arranca acreditado a quien sube; se puede cambiar desde la ficha.
+      responsable_id: user?.id ?? null,
     })
     .select(SELECT_FILE)
     .single();
@@ -771,6 +821,33 @@ async function applyOrden(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   const supabase = await createClient();
   await supabase.rpc("reordenar_cobertura_files", { p_ids: ids });
+}
+
+/**
+ * Cambia a quién se le acredita una pieza. No toca `created_by`: quién la subió
+ * es un hecho de auditoría y no se reescribe.
+ */
+export async function setResponsableArchivo(
+  fileId: string,
+  responsableId: string | null,
+): Promise<ActionResult<CoberturaFile>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cobertura_files")
+    .update({ responsable_id: responsableId })
+    .eq("id", fileId)
+    .select(SELECT_FILE)
+    .single();
+  if (error || !data) return { ok: false, message: "No se pudo cambiar el responsable." };
+
+  const fila = data as Record<string, unknown>;
+  const nombres = await nombresDe(supabase, [
+    fila.created_by as string | null,
+    fila.responsable_id as string | null,
+  ]);
+  const file = aplanarFile(fila, nombres);
+  revalidatePath(`/dashboard/comunicaciones/coberturas/${file.cobertura_id}`);
+  return { ok: true, message: "Responsable actualizado.", data: file };
 }
 
 /** Edita la ficha de un archivo. El renombrado se refleja también en Drive. */

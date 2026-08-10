@@ -79,6 +79,7 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/comunicaciones/publicaciones", label: "Publicaciones", icon: Newspaper, description: "Noticias, comunicados y piezas (idea → publicado). Las públicas salen en el sitio." },
       { href: "/dashboard/comunicaciones/calendario", label: "Calendario editorial", icon: CalendarRange, description: "Programa piezas por canal y fecha, con responsable y estado." },
       { href: "/dashboard/comunicaciones/monitoreo", label: "Monitoreo de personas", icon: Radar, description: "Recopila noticias, menciones y publicaciones sobre figuras públicas y etiquétalas (aliado, contraposición, senador…)." },
+      { href: "/dashboard/comunicaciones/equipos", label: "Equipos de cobertura", icon: Users, description: "Quién graba y quién fotografía. El material que se sube a una cobertura se atribuye a un equipo." },
     ],
   },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText, module: "documentos" },

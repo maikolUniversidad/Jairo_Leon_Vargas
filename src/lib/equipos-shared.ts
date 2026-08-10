@@ -18,3 +18,31 @@ export interface EquipoCobertura {
   tipo: TipoEquipo;
   activo: boolean;
 }
+
+/** Roles sugeridos dentro de un equipo. El campo admite cualquier texto. */
+export const ROLES_INTEGRANTE = [
+  "Camarógrafo",
+  "Fotógrafo",
+  "Editor",
+  "Periodista",
+  "Community manager",
+] as const;
+
+export interface IntegranteEquipo {
+  id: string;
+  equipo_id: string;
+  user_id: string;
+  /** Nombre resuelto del perfil, para no consultarlo en cada pantalla. */
+  nombre: string;
+  rol: string | null;
+}
+
+export interface EquipoConIntegrantes extends EquipoCobertura {
+  integrantes: IntegranteEquipo[];
+}
+
+/** Persona de la plataforma que se puede sumar a un equipo. */
+export interface UsuarioPlataforma {
+  id: string;
+  nombre: string;
+}

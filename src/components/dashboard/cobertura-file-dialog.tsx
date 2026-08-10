@@ -21,8 +21,11 @@ import { formatDate } from "@/lib/utils";
 import { formatBytes, mediaKind, tipoContenido } from "@/lib/media-kind";
 import { reemplazarArchivoCobertura, subirArchivoCobertura } from "@/lib/upload-cobertura";
 import {
-  removeCoberturaFile, updateCoberturaFileMeta, type CoberturaFile, type Fase,
+  removeCoberturaFile, setResponsableArchivo, updateCoberturaFileMeta,
+  type CoberturaFile, type Fase,
 } from "@/actions/coberturas";
+import { listUsuariosPlataforma } from "@/actions/equipos";
+import { type UsuarioPlataforma } from "@/lib/equipos-shared";
 
 const FASE_LABEL: Record<Fase, string> = {
   crudo: "Contenido Crudo",
@@ -116,6 +119,16 @@ export function CoberturaFileDialog({
 
   const inputReemplazo = useRef<HTMLInputElement>(null);
   const inputDerivar = useRef<HTMLInputElement>(null);
+
+  // Se cargan aquí y no por props para no atravesar página, detalle y tablero
+  // con una lista que solo necesita este selector.
+  const [personas, setPersonas] = useState<UsuarioPlataforma[]>([]);
+  useEffect(() => {
+    if (!file || personas.length > 0) return;
+    let vigente = true;
+    void listUsuariosPlataforma().then((p) => { if (vigente) setPersonas(p); });
+    return () => { vigente = false; };
+  }, [file, personas.length]);
 
   useEffect(() => {
     if (!file) return;
@@ -346,7 +359,36 @@ export function CoberturaFileDialog({
             </div>
 
             <div className="mt-auto space-y-2 border-t pt-3 text-xs text-muted-foreground">
-              <p>{formatBytes(file.size)} · subido el {formatDate(file.created_at)}</p>
+              <p>
+                {formatBytes(file.size)} · subido el {formatDate(file.created_at)}
+                {file.subido_por_nombre && ` por ${file.subido_por_nombre}`}
+              </p>
+              {/* Quién subió es auditoría y no se toca; el responsable es a quién
+                  se le acredita, y sí se corrige cuando alguien sube material ajeno. */}
+              <div className="flex items-center gap-2">
+                <span className="shrink-0">Responsable:</span>
+                <select
+                  value={file.responsable_id ?? ""}
+                  disabled={ocupado || personas.length === 0}
+                  onChange={(e) =>
+                    start(async () => {
+                      const res = await setResponsableArchivo(file.id, e.target.value || null);
+                      if (res.ok && res.data) {
+                        onActualizar(res.data);
+                        toast.success(res.message);
+                      } else {
+                        toast.error(res.message);
+                      }
+                    })
+                  }
+                  className="h-7 flex-1 rounded border bg-background px-1.5 text-[11px]"
+                >
+                  <option value="">Sin responsable</option>
+                  {personas.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex gap-2">
                 <Button asChild variant="ghost" size="sm" className="flex-1">
                   <a href={file.url} target="_blank" rel="noopener noreferrer">
