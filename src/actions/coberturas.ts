@@ -17,6 +17,7 @@ import {
   uploadBufferToFolder,
 } from "@/lib/google-drive";
 import { logActivity } from "@/lib/activity";
+import { construirBrief } from "@/lib/cobertura-brief";
 import { type ActionResult } from "./types";
 
 export type Fase = "crudo" | "editado" | "aprobado";
@@ -41,6 +42,33 @@ export interface Cobertura {
   drive_crudo_id: string | null;
   drive_editado_id: string | null;
   drive_aprobado_id: string | null;
+  // Ficha ampliada (migración 0033)
+  objetivo: string | null;
+  resumen: string | null;
+  mensajes_clave: string | null;
+  temas: string[];
+  resultados: string | null;
+  compromisos: string | null;
+  aliados: string | null;
+  publico_estimado: number | null;
+  hashtags: string[];
+}
+
+export interface Asistente {
+  id: string;
+  cobertura_id: string;
+  contacto_id: string | null;
+  ciudadano_id: string | null;
+  nombre: string;
+  rol: string | null;
+}
+
+/** Persona de la plataforma que se puede vincular como asistente. */
+export interface PersonaVinculable {
+  id: string;
+  tipo: "contacto" | "ciudadano";
+  nombre: string;
+  detalle: string | null;
 }
 
 export interface CoberturaFile {
@@ -77,9 +105,10 @@ export async function listCoberturas(): Promise<Cobertura[]> {
 export async function getCoberturaDetail(id: string): Promise<{
   cobertura: Cobertura | null;
   files: Record<Fase, CoberturaFile[]>;
+  asistentes: Asistente[];
 }> {
   const supabase = await createClient();
-  const [{ data: cob }, { data: files }] = await Promise.all([
+  const [{ data: cob }, { data: files }, { data: asistentes }] = await Promise.all([
     supabase.from("coberturas").select("*").eq("id", id).is("deleted_at", null).maybeSingle(),
     supabase
       .from("cobertura_files")
@@ -87,10 +116,19 @@ export async function getCoberturaDetail(id: string): Promise<{
       .eq("cobertura_id", id)
       .order("orden", { ascending: true })
       .order("created_at", { ascending: false }),
+    supabase
+      .from("cobertura_asistentes")
+      .select("id, cobertura_id, contacto_id, ciudadano_id, nombre, rol")
+      .eq("cobertura_id", id)
+      .order("created_at", { ascending: true }),
   ]);
   const grouped: Record<Fase, CoberturaFile[]> = { crudo: [], editado: [], aprobado: [] };
   for (const f of (files as CoberturaFile[]) ?? []) grouped[f.fase]?.push(f);
-  return { cobertura: (cob as Cobertura) ?? null, files: grouped };
+  return {
+    cobertura: (cob as Cobertura) ?? null,
+    files: grouped,
+    asistentes: (asistentes as Asistente[]) ?? [],
+  };
 }
 
 export async function createCobertura(input: {
@@ -160,6 +198,219 @@ export async function softDeleteCobertura(id: string): Promise<ActionResult> {
   if (error) return { ok: false, message: "No se pudo eliminar." };
   revalidatePath("/dashboard/comunicaciones/coberturas");
   return { ok: true, message: "Cobertura eliminada." };
+}
+
+/* ────────────────────── Ficha: datos de la jornada ────────────────────── */
+
+/** Limpia una lista de etiquetas escrita como texto separado por comas. */
+function etiquetas(valor: string[] | undefined): string[] | undefined {
+  if (valor === undefined) return undefined;
+  const vistas = new Set<string>();
+  const out: string[] = [];
+  for (const t of valor) {
+    const limpia = t.trim();
+    const clave = limpia.toLowerCase();
+    if (limpia && !vistas.has(clave)) {
+      vistas.add(clave);
+      out.push(limpia);
+    }
+  }
+  return out;
+}
+
+const texto = (v: string | null | undefined): string | null | undefined =>
+  v === undefined ? undefined : v?.trim() || null;
+
+export interface FichaCobertura {
+  nombre?: string;
+  descripcion?: string | null;
+  fecha?: string | null;
+  lugar?: string | null;
+  objetivo?: string | null;
+  resumen?: string | null;
+  mensajes_clave?: string | null;
+  temas?: string[];
+  resultados?: string | null;
+  compromisos?: string | null;
+  aliados?: string | null;
+  publico_estimado?: number | null;
+  hashtags?: string[];
+}
+
+/** Guarda la ficha completa. Solo escribe los campos que llegan definidos. */
+export async function updateCoberturaFicha(
+  id: string,
+  ficha: FichaCobertura,
+): Promise<ActionResult<Cobertura>> {
+  const supabase = await createClient();
+
+  if (ficha.nombre !== undefined && !ficha.nombre.trim()) {
+    return {
+      ok: false,
+      message: "Revisa los campos.",
+      fieldErrors: { nombre: "El nombre no puede quedar vacío." },
+    };
+  }
+  if (ficha.publico_estimado != null && (ficha.publico_estimado < 0 || !Number.isInteger(ficha.publico_estimado))) {
+    return {
+      ok: false,
+      message: "Revisa los campos.",
+      fieldErrors: { publico_estimado: "Escribe un número entero de personas." },
+    };
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (ficha.nombre !== undefined) patch.nombre = ficha.nombre.trim();
+  for (const campo of [
+    "descripcion", "fecha", "lugar", "objetivo", "resumen",
+    "mensajes_clave", "resultados", "compromisos", "aliados",
+  ] as const) {
+    const v = texto(ficha[campo]);
+    if (v !== undefined) patch[campo] = v;
+  }
+  // La fecha vacía debe llegar como null, no como cadena: la columna es `date`.
+  if (ficha.fecha !== undefined) patch.fecha = ficha.fecha?.trim() || null;
+  if (ficha.publico_estimado !== undefined) patch.publico_estimado = ficha.publico_estimado;
+  const temas = etiquetas(ficha.temas);
+  if (temas !== undefined) patch.temas = temas;
+  const hashtags = etiquetas(ficha.hashtags);
+  if (hashtags !== undefined) patch.hashtags = hashtags;
+
+  if (Object.keys(patch).length === 0) return { ok: false, message: "No hay cambios que guardar." };
+
+  const { data, error } = await supabase
+    .from("coberturas")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) return { ok: false, message: "No se pudo guardar la ficha (¿permisos?)." };
+
+  // Renombrar la cobertura no renombra su carpeta de Drive: la carpeta ya tiene
+  // archivos y enlaces compartidos que no conviene mover por un cambio de título.
+  revalidatePath(`/dashboard/comunicaciones/coberturas/${id}`);
+  revalidatePath("/dashboard/comunicaciones/coberturas");
+  return { ok: true, message: "Ficha guardada.", data: data as Cobertura };
+}
+
+/* ────────────────────────────── Asistentes ────────────────────────────── */
+
+/** Contactos y ciudadanos que se pueden vincular como asistentes. */
+export async function listPersonasVinculables(): Promise<PersonaVinculable[]> {
+  const supabase = await createClient();
+  const [{ data: contactos }, { data: ciudadanos }] = await Promise.all([
+    supabase
+      .from("contacts")
+      .select("id, nombre, apellido, organizacion")
+      .is("deleted_at", null)
+      .order("nombre", { ascending: true })
+      .limit(600),
+    supabase
+      .from("citizens")
+      .select("id, nombre, apellido, documento")
+      .is("deleted_at", null)
+      .order("nombre", { ascending: true })
+      .limit(600),
+  ]);
+
+  const personas: PersonaVinculable[] = [];
+  for (const c of contactos ?? []) {
+    personas.push({
+      id: c.id,
+      tipo: "contacto",
+      nombre: [c.nombre, c.apellido].filter(Boolean).join(" ").trim(),
+      detalle: c.organizacion ?? null,
+    });
+  }
+  for (const c of ciudadanos ?? []) {
+    personas.push({
+      id: c.id,
+      tipo: "ciudadano",
+      nombre: [c.nombre, c.apellido].filter(Boolean).join(" ").trim(),
+      detalle: c.documento ?? null,
+    });
+  }
+  return personas.filter((p) => p.nombre.length > 0);
+}
+
+export async function addAsistente(input: {
+  cobertura_id: string;
+  nombre: string;
+  rol?: string | null;
+  contacto_id?: string | null;
+  ciudadano_id?: string | null;
+}): Promise<ActionResult<Asistente>> {
+  const nombre = input.nombre.trim();
+  if (!nombre) {
+    return { ok: false, message: "Revisa los campos.", fieldErrors: { nombre: "Escribe un nombre." } };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from("cobertura_asistentes")
+    .insert({
+      cobertura_id: input.cobertura_id,
+      nombre,
+      rol: input.rol?.trim() || null,
+      contacto_id: input.contacto_id ?? null,
+      ciudadano_id: input.ciudadano_id ?? null,
+      created_by: user?.id ?? null,
+    })
+    .select("id, cobertura_id, contacto_id, ciudadano_id, nombre, rol")
+    .single();
+
+  if (error) {
+    // 23505: los índices únicos parciales de la migración 0033.
+    if (error.code === "23505") return { ok: false, message: "Esa persona ya está en la lista." };
+    return { ok: false, message: "No se pudo agregar (¿permisos?)." };
+  }
+
+  revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
+  return { ok: true, message: "Asistente agregado.", data: data as Asistente };
+}
+
+export async function removeAsistente(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("cobertura_asistentes").delete().eq("id", id);
+  if (error) return { ok: false, message: "No se pudo quitar." };
+  return { ok: true, message: "Asistente quitado." };
+}
+
+/* ─────────────────────────────── Brief IA ─────────────────────────────── */
+
+/**
+ * Arma el texto que resume la cobertura para pegárselo a la IA. La consulta vive
+ * aquí; el formato, en `lib/cobertura-brief.ts`, que es una función pura.
+ */
+export async function getBriefCobertura(id: string): Promise<ActionResult<{ texto: string }>> {
+  const { cobertura, files, asistentes } = await getCoberturaDetail(id);
+  if (!cobertura) return { ok: false, message: "Cobertura no encontrada." };
+
+  const archivos = FASES.flatMap((fase) =>
+    files[fase].map((f) => ({
+      fase,
+      nombre: f.nombre,
+      mime: f.mime,
+      descripcion: f.descripcion,
+    })),
+  );
+
+  const texto = construirBrief(
+    cobertura,
+    asistentes.map((a) => ({
+      nombre: a.nombre,
+      rol: a.rol,
+      vinculo: a.contacto_id ? "contacto" : a.ciudadano_id ? "ciudadano" : null,
+    })),
+    archivos,
+  );
+
+  await logActivity("brief", "cobertura", id, cobertura.nombre);
+  return { ok: true, message: "ok", data: { texto } };
 }
 
 /** Crea/repara la carpeta de Drive de una cobertura existente. */

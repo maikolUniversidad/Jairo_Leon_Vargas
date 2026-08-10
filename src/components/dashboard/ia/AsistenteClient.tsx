@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Menu, Sparkles, ChevronDown, Plus, X, UserSearch, Search, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -26,9 +26,18 @@ interface Props {
   carpetasIniciales: IACarpeta[]
   conversacionesIniciales: IAConversacion[]
   personas: PersonaChat[]
-  /** Texto inicial del compositor (prefill desde otros módulos vía ?prompt=). */
+  /**
+   * Texto inicial del compositor (prefill desde otros módulos vía ?prompt=).
+   * El valor especial `sesion` significa que el texto viene por sessionStorage:
+   * lo usan los prompts largos, como el brief de una cobertura, que no caben en
+   * la URL y que además llevan datos personales que no deben quedar en el
+   * historial del navegador ni en los registros del servidor.
+   */
   promptInicial?: string
 }
+
+/** Clave acordada con los módulos que envían un prompt largo al chat. */
+const CLAVE_PROMPT = 'ia:prompt'
 
 function nuevoId() {
   return globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.round(Math.random() * 1e6)}`
@@ -44,7 +53,7 @@ export function AsistenteClient({ userId, carpetasIniciales, conversacionesInici
   const [conversaciones, setConversaciones] = useState<IAConversacion[]>(conversacionesIniciales)
   const [activaId, setActivaId] = useState<string | null>(null)
   const [mensajes, setMensajes] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState(promptInicial ?? '')
+  const [input, setInput] = useState(promptInicial === 'sesion' ? '' : (promptInicial ?? ''))
   const [streaming, setStreaming] = useState(false)
   const [modelo, setModelo] = useState<ModeloIA>('deepseek-chat')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -54,6 +63,19 @@ export function AsistenteClient({ userId, carpetasIniciales, conversacionesInici
   const [personaCtx, setPersonaCtx] = useState<PersonaChat | null>(null)
   const [personaOpen, setPersonaOpen] = useState(false)
   const [personaQuery, setPersonaQuery] = useState('')
+
+  // Prompt largo enviado desde otro módulo. Se consume una sola vez: si no se
+  // borrara, reaparecería al volver al chat más tarde en la misma pestaña.
+  useEffect(() => {
+    if (promptInicial !== 'sesion') return
+    try {
+      const guardado = sessionStorage.getItem(CLAVE_PROMPT)
+      if (guardado) setInput(guardado)
+      sessionStorage.removeItem(CLAVE_PROMPT)
+    } catch {
+      /* sin sessionStorage el compositor simplemente arranca vacío */
+    }
+  }, [promptInicial])
 
   const personasFiltradas = useMemo(() => {
     const t = personaQuery.trim().toLowerCase()

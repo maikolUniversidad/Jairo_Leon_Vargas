@@ -12,10 +12,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { CoberturaBoard } from "@/components/dashboard/cobertura-board";
+import { CoberturaFicha } from "@/components/dashboard/cobertura-ficha-form";
 import { formatDate } from "@/lib/utils";
 import {
   repairCoberturaDrive, updateCoberturaEstado,
-  type Cobertura, type CoberturaFile, type Fase,
+  type Asistente, type Cobertura, type CoberturaFile, type Fase, type PersonaVinculable,
 } from "@/actions/coberturas";
 
 const ESTADOS = ["planeada", "en_curso", "en_edicion", "en_aprobacion", "publicada", "archivada"];
@@ -23,9 +24,13 @@ const ESTADOS = ["planeada", "en_curso", "en_edicion", "en_aprobacion", "publica
 export function CoberturaDetail({
   cobertura,
   files,
+  asistentes,
+  personas,
 }: {
   cobertura: Cobertura;
   files: Record<Fase, CoberturaFile[]>;
+  asistentes: Asistente[];
+  personas: PersonaVinculable[];
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -79,6 +84,8 @@ export function CoberturaDetail({
           </div>
         </CardContent>
       </Card>
+
+      <CoberturaFicha cobertura={cobertura} asistentes={asistentes} personas={personas} />
 
       <CoberturaBoard cobertura={cobertura} files={files} />
     </>
