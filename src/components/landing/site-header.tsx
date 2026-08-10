@@ -86,10 +86,19 @@ export function SiteHeader() {
           ))}
           <div className="mt-2 flex gap-2 px-3">
             <Button asChild variant="accent" size="sm" className="flex-1">
-              <Link href="/participa">Participa</Link>
+              <Link href="/participa" onClick={() => setOpen(false)}>
+                Participa
+              </Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="flex-1 border-white/30 text-white">
-              <Link href="/login">Ingresar</Link>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="flex-1 border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Link href="/login" onClick={() => setOpen(false)}>
+                <LogIn className="size-4" /> Ingresar
+              </Link>
             </Button>
           </div>
         </nav>
