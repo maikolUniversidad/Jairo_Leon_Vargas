@@ -21,6 +21,8 @@ import { CoberturaExtraccionReview } from "@/components/dashboard/cobertura-extr
 import {
   type FichaExtraida, type Pregunta, type Respuesta,
 } from "@/lib/cuestionario-shared";
+import { type PersonaResuelta } from "@/lib/personas-match";
+import { type ResultadoDictado } from "@/actions/cuestionario";
 import {
   getBriefCobertura, updateCoberturaFicha,
   type Asistente, type Cobertura, type PersonaVinculable,
@@ -140,6 +142,7 @@ export function CoberturaFicha({
   const params = useSearchParams();
   const [cuestionario, setCuestionario] = useState(false);
   const [propuesta, setPropuesta] = useState<FichaExtraida | null>(null);
+  const [personasDichas, setPersonasDichas] = useState<PersonaResuelta[]>([]);
 
   // Al crear una cobertura «dictando» se llega con ?cuestionario=1: así crear y
   // editar comparten el mismo punto de entrada y no hay que sostener audio en
@@ -256,9 +259,10 @@ export function CoberturaFicha({
         preguntas={preguntas}
         respuestasIniciales={respuestas}
         onCerrar={() => setCuestionario(false)}
-        onExtraido={(ficha) => {
+        onExtraido={(res: ResultadoDictado) => {
           setCuestionario(false);
-          setPropuesta(ficha);
+          setPropuesta(res.ficha);
+          setPersonasDichas(res.personas);
         }}
       />
 
@@ -266,6 +270,8 @@ export function CoberturaFicha({
         abierto={propuesta !== null}
         propuesta={propuesta ?? {}}
         actuales={datos as unknown as Record<string, unknown>}
+        personas={personasDichas}
+        coberturaId={inicial.id}
         onCancelar={() => setPropuesta(null)}
         onAplicar={aplicarPropuesta}
       />

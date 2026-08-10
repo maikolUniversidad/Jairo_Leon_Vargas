@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { grabacionSoportada, transcribir, useGrabadora } from "@/lib/audio-recorder";
 import {
   CAMPO_LABEL, acotar, preguntasAplicables,
-  type FichaExtraida, type Pregunta, type Respuesta,
+  type Pregunta, type Respuesta,
 } from "@/lib/cuestionario-shared";
-import { guardarDictado } from "@/actions/cuestionario";
+import { guardarDictado, type ResultadoDictado } from "@/actions/cuestionario";
 
 type Paso = "momento" | "grabando" | "revisando";
 
@@ -44,7 +44,7 @@ export function CoberturaCuestionario({
   preguntas: Pregunta[];
   respuestasIniciales: Respuesta[];
   onCerrar: () => void;
-  onExtraido: (ficha: FichaExtraida) => void;
+  onExtraido: (resultado: ResultadoDictado) => void;
 }) {
   const [paso, setPaso] = useState<Paso>("momento");
   const [yaOcurrio, setYaOcurrio] = useState(true);

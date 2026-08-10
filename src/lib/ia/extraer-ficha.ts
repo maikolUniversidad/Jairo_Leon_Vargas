@@ -7,6 +7,7 @@ import {
   type CampoPregunta,
   type FichaExtraida,
 } from "@/lib/cuestionario-shared";
+import { type PersonaDicha, type Vinculo } from "@/lib/personas-match";
 
 /**
  * Convierte lo hablado en una cobertura a los campos de su ficha.
@@ -114,6 +115,34 @@ export function normalizarFicha(crudo: unknown): FichaExtraida {
   return out as FichaExtraida;
 }
 
+const VINCULOS: Vinculo[] = ["equipo", "aliado", "otro"];
+
+/**
+ * Personas nombradas, limpias. Se descarta lo que no tenga nombre utilizable:
+ * el modelo a veces cuela «los vecinos» pese a la instrucción de no hacerlo.
+ */
+export function normalizarPersonas(crudo: unknown): PersonaDicha[] {
+  if (!crudo || typeof crudo !== "object") return [];
+  const lista = (crudo as { personas?: unknown }).personas;
+  if (!Array.isArray(lista)) return [];
+
+  const out: PersonaDicha[] = [];
+  for (const item of lista) {
+    if (!item || typeof item !== "object") continue;
+    const p = item as Record<string, unknown>;
+    const nombre = typeof p.nombre === "string" ? p.nombre.trim() : "";
+    // Sin al menos una letra no es un nombre.
+    if (!nombre || !/\p{L}/u.test(nombre)) continue;
+
+    const vinculo = VINCULOS.includes(p.vinculo as Vinculo) ? (p.vinculo as Vinculo) : "otro";
+    const rol = typeof p.rol === "string" && p.rol.trim() ? p.rol.trim() : null;
+    const organizacion =
+      typeof p.organizacion === "string" && p.organizacion.trim() ? p.organizacion.trim() : null;
+    out.push({ nombre, vinculo, rol, organizacion });
+  }
+  return out;
+}
+
 /* ────────────────────────── Llamada al modelo ────────────────────────── */
 
 export interface TranscripcionPregunta {
@@ -143,6 +172,26 @@ const HERRAMIENTA = {
         aliados: { type: "string", description: "Aliados u organizaciones presentes." },
         publico_estimado: { type: "integer", description: "Número aproximado de asistentes." },
         hashtags: { type: "array", items: { type: "string" }, description: "Etiquetas para publicar." },
+        personas: {
+          type: "array",
+          description:
+            "Personas nombradas explícitamente. Solo con nombre propio; nunca 'la gente' ni 'los vecinos'.",
+          items: {
+            type: "object",
+            properties: {
+              nombre: { type: "string", description: "Nombre y apellido tal como se dijo." },
+              vinculo: {
+                type: "string",
+                enum: ["equipo", "aliado", "otro"],
+                description:
+                  "equipo = gente de la UTL que cubrió la jornada; aliado = personas de organizaciones o instituciones que acompañaron; otro = el resto.",
+              },
+              rol: { type: "string", description: "Qué hizo o qué cargo tiene, si se dijo." },
+              organizacion: { type: "string", description: "A qué organización pertenece, si se dijo." },
+            },
+            required: ["nombre", "vinculo"],
+          },
+        },
       },
     },
   },
@@ -169,9 +218,9 @@ Reglas:
 export async function extraerFicha(
   respuestas: TranscripcionPregunta[],
   modelo = "auto",
-): Promise<FichaExtraida> {
+): Promise<Extraccion> {
   const utiles = respuestas.filter((r) => r.transcripcion.trim().length > 0);
-  if (utiles.length === 0) return {};
+  if (utiles.length === 0) return { ficha: {}, personas: [] };
 
   const cuerpo = utiles
     .map((r) => `Pregunta (campo "${r.campo}"): ${r.pregunta}\nRespuesta: ${r.transcripcion.trim()}`)
@@ -189,15 +238,24 @@ export async function extraerFicha(
   return leerLlamada(toolCalls);
 }
 
-function leerLlamada(toolCalls: { function: { name: string; arguments: string } }[]): FichaExtraida {
+export interface Extraccion {
+  ficha: FichaExtraida;
+  personas: PersonaDicha[];
+}
+
+function leerLlamada(
+  toolCalls: { function: { name: string; arguments: string } }[],
+): Extraccion {
+  const vacio: Extraccion = { ficha: {}, personas: [] };
   const llamada = toolCalls.find((t) => t.function?.name === "guardar_ficha");
-  if (!llamada) return {};
+  if (!llamada) return vacio;
   try {
-    return normalizarFicha(JSON.parse(llamada.function.arguments));
+    const crudo = JSON.parse(llamada.function.arguments);
+    return { ficha: normalizarFicha(crudo), personas: normalizarPersonas(crudo) };
   } catch {
     // El modelo devolvió argumentos que no son JSON válido: no se propone nada
     // en vez de tumbar el cuestionario entero.
-    return {};
+    return vacio;
   }
 }
 
@@ -220,6 +278,16 @@ Reglas:
   número entero, la fecha SIEMPRE en ISO YYYY-MM-DD.
 - Si lo dicho no permite saber la fecha con certeza, omítela: una fecha mal
   interpretada es peor que ninguna.
+
+Sobre las personas:
+- Saca en "personas" a TODA persona nombrada con nombre propio, y di a qué título
+  estuvo: del equipo, aliada, u otra.
+- En "aliados" describe las organizaciones e instituciones en prosa, pero a las
+  personas concretas ponlas también en "personas": es ahí donde se vinculan con
+  el registro de contactos y usuarios.
+- Nunca inventes un apellido. Si solo se dijo el nombre de pila, ponlo tal cual.
+- No metas a nadie por descripciones colectivas: "la gente del barrio" no es una
+  persona.
 - Llama siempre a la herramienta guardar_ficha.`;
 
 /**
@@ -233,9 +301,9 @@ export async function extraerDeDictado(
   transcripcion: string,
   preguntas: { pregunta: string; campo: CampoPregunta }[],
   modelo = "auto",
-): Promise<FichaExtraida> {
+): Promise<Extraccion> {
   const texto = transcripcion.trim();
-  if (!texto) return {};
+  if (!texto) return { ficha: {}, personas: [] };
 
   const guion = preguntas
     .map((p) => `- ${p.pregunta}  →  campo "${p.campo}"`)

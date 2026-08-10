@@ -20,6 +20,13 @@ import {
 const ROLES = ["Asistente", "Ponente", "Organizador", "Prensa", "Equipo"];
 const SIN_ROL = "__sin_rol__";
 
+/** Equipo primero: «¿quién de los nuestros estuvo?» es la pregunta más frecuente. */
+const GRUPOS = [
+  { vinculo: "equipo" as const, titulo: "Del equipo" },
+  { vinculo: "aliado" as const, titulo: "Aliados y organizaciones" },
+  { vinculo: "otro" as const, titulo: "Otros asistentes" },
+];
+
 export function CoberturaAsistentes({
   coberturaId,
   asistentes: iniciales,
@@ -51,7 +58,8 @@ export function CoberturaAsistentes({
         .map((p) => ({
           value: `${p.tipo}:${p.id}`,
           label: p.nombre,
-          hint: p.tipo === "contacto" ? "contacto" : "ciudadano",
+          hint:
+            p.tipo === "usuario" ? "del equipo" : p.tipo === "contacto" ? "contacto" : "ciudadano",
           keywords: p.detalle ? [p.detalle] : undefined,
         }))
         .filter((o) => !yaVinculados.has(o.value)),
@@ -77,8 +85,11 @@ export function CoberturaAsistentes({
       cobertura_id: coberturaId,
       nombre: persona.nombre,
       rol: rol === SIN_ROL ? null : rol,
+      // Un usuario de la plataforma es, por definición, gente del equipo.
+      user_id: tipo === "usuario" ? id : null,
       contacto_id: tipo === "contacto" ? id : null,
       ciudadano_id: tipo === "ciudadano" ? id : null,
+      vinculo: tipo === "usuario" ? "equipo" : tipo === "contacto" ? "aliado" : "otro",
     });
   };
 
@@ -124,7 +135,7 @@ export function CoberturaAsistentes({
           value=""
           onChange={vincular}
           options={opciones}
-          placeholder="Buscar en contactos y ciudadanos…"
+          placeholder="Buscar en el equipo, contactos y ciudadanos…"
           searchPlaceholder="Nombre, organización o documento…"
           emptyText="Nadie con ese nombre en la plataforma."
         />
@@ -151,16 +162,28 @@ export function CoberturaAsistentes({
           <UserPlus className="size-4" /> Todavía no hay nadie registrado.
         </p>
       ) : (
-        <ul className="flex flex-wrap gap-2">
-          {asistentes.map((a) => (
+        <div className="space-y-2">
+          {GRUPOS.map(({ vinculo, titulo }) => {
+            const delGrupo = asistentes.filter((a) => (a.vinculo ?? "otro") === vinculo);
+            if (delGrupo.length === 0) return null;
+            return (
+              <div key={vinculo}>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">
+                  {titulo} · {delGrupo.length}
+                </p>
+                <ul className="flex flex-wrap gap-2">
+                  {delGrupo.map((a) => (
             <li
               key={a.id}
               className="flex items-center gap-2 rounded-full border bg-background py-1 pl-3 pr-1.5 text-sm"
             >
               <span>{a.nombre}</span>
               {a.rol && <Badge variant="muted">{a.rol}</Badge>}
-              {(a.contacto_id || a.ciudadano_id) && (
-                <Badge variant="secondary">{a.contacto_id ? "contacto" : "ciudadano"}</Badge>
+              {a.organizacion && <Badge variant="muted">{a.organizacion}</Badge>}
+              {(a.user_id || a.contacto_id || a.ciudadano_id) && (
+                <Badge variant="secondary">
+                  {a.user_id ? "usuario" : a.contacto_id ? "contacto" : "ciudadano"}
+                </Badge>
               )}
               <button
                 type="button"
@@ -170,9 +193,13 @@ export function CoberturaAsistentes({
               >
                 <X className="size-3.5" />
               </button>
-            </li>
-          ))}
-        </ul>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

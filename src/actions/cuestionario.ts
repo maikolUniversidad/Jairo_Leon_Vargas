@@ -11,7 +11,48 @@ import {
   type Pregunta,
   type Respuesta,
 } from "@/lib/cuestionario-shared";
+import {
+  normalizar,
+  resolverPersonas,
+  type PersonaConocida,
+  type PersonaResuelta,
+} from "@/lib/personas-match";
 import { type ActionResult } from "./types";
+
+/** Lo que devuelve un dictado: la ficha propuesta y quiénes se nombraron. */
+export interface ResultadoDictado {
+  ficha: FichaExtraida;
+  personas: PersonaResuelta[];
+}
+
+/**
+ * Todo el mundo con quien se puede emparejar un nombre dicho: usuarios de la
+ * plataforma primero, porque son los que identifican al equipo.
+ */
+async function personasConocidas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<PersonaConocida[]> {
+  const [{ data: perfiles }, { data: contactos }, { data: ciudadanos }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name").limit(500),
+    supabase.from("contacts").select("id, nombre, apellido").is("deleted_at", null).limit(600),
+    supabase.from("citizens").select("id, nombre, apellido").is("deleted_at", null).limit(600),
+  ]);
+
+  const out: PersonaConocida[] = [];
+  for (const p of (perfiles ?? []) as { id: string; full_name: string | null }[]) {
+    const nombre = p.full_name?.trim();
+    if (nombre) out.push({ id: p.id, tipo: "usuario", nombre });
+  }
+  for (const c of (contactos ?? []) as { id: string; nombre: string; apellido: string | null }[]) {
+    const nombre = [c.nombre, c.apellido].filter(Boolean).join(" ").trim();
+    if (nombre) out.push({ id: c.id, tipo: "contacto", nombre });
+  }
+  for (const c of (ciudadanos ?? []) as { id: string; nombre: string; apellido: string | null }[]) {
+    const nombre = [c.nombre, c.apellido].filter(Boolean).join(" ").trim();
+    if (nombre) out.push({ id: c.id, tipo: "ciudadano", nombre });
+  }
+  return out;
+}
 
 /**
  * Cuestionario por voz de la ficha de una cobertura.
@@ -108,7 +149,7 @@ export async function guardarDictado(input: {
   cobertura_id: string;
   transcripcion: string;
   duracion_seg?: number | null;
-}): Promise<ActionResult<FichaExtraida>> {
+}): Promise<ActionResult<ResultadoDictado>> {
   const texto = input.transcripcion.trim();
   if (!texto) return { ok: false, message: "No se transcribió nada." };
 
@@ -132,9 +173,9 @@ export async function guardarDictado(input: {
     return { ok: false, message: "No hay preguntas configuradas." };
   }
 
-  let ficha: FichaExtraida;
+  let extraccion: Awaited<ReturnType<typeof extraerDeDictado>>;
   try {
-    ficha = await extraerDeDictado(
+    extraccion = await extraerDeDictado(
       texto,
       preguntas.map((p) => ({ pregunta: p.pregunta, campo: p.campo })),
     );
@@ -145,9 +186,15 @@ export async function guardarDictado(input: {
     };
   }
 
-  if (Object.keys(ficha).length === 0) {
+  const ficha = extraccion.ficha;
+  if (Object.keys(ficha).length === 0 && extraccion.personas.length === 0) {
     return { ok: false, message: "La IA no pudo sacar información de lo dictado." };
   }
+
+  // Los nombres dichos se emparejan con quien ya está en la plataforma. No se
+  // guardan aún: se proponen en la revisión, porque vincular a la persona
+  // equivocada en el registro de una jornada es difícil de detectar después.
+  const personas = resolverPersonas(extraccion.personas, await personasConocidas(supabase));
 
   // Cada campo con contenido se guarda como la respuesta de su pregunta: así el
   // carrusel muestra qué quedó cubierto y qué no se alcanzó a contar.
@@ -175,7 +222,64 @@ export async function guardarDictado(input: {
   }
 
   revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
-  return { ok: true, message: "Listo. Revisa lo que se entendió.", data: ficha };
+  return { ok: true, message: "Listo. Revisa lo que se entendió.", data: { ficha, personas } };
+}
+
+/**
+ * Suma a «quiénes estuvieron» las personas nombradas en el dictado.
+ *
+ * Se llama desde la revisión, con lo que el usuario dejó marcado: nunca de
+ * forma automática. Vincular a la persona equivocada en el registro de una
+ * jornada es difícil de detectar después.
+ */
+export async function agregarAsistentesDictados(
+  coberturaId: string,
+  personas: PersonaResuelta[],
+): Promise<ActionResult<{ agregados: number }>> {
+  if (personas.length === 0) return { ok: true, message: "Sin personas que agregar.", data: { agregados: 0 } };
+
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: "Sesión no válida." };
+
+  const supabase = await createClient();
+
+  // Ya registrados, para no duplicar a quien se nombró en un dictado anterior.
+  const { data: previos } = await supabase
+    .from("cobertura_asistentes")
+    .select("nombre, user_id, contacto_id, ciudadano_id")
+    .eq("cobertura_id", coberturaId);
+
+  const yaEstan = new Set(
+    ((previos ?? []) as { nombre: string }[]).map((a) => normalizar(a.nombre)),
+  );
+
+  const filas = personas
+    .filter((p) => !yaEstan.has(normalizar(p.nombre)))
+    .map((p) => ({
+      cobertura_id: coberturaId,
+      nombre: p.nombre,
+      rol: p.rol ?? null,
+      organizacion: p.organizacion ?? null,
+      vinculo: p.vinculo,
+      user_id: p.match?.tipo === "usuario" ? p.match.id : null,
+      contacto_id: p.match?.tipo === "contacto" ? p.match.id : null,
+      ciudadano_id: p.match?.tipo === "ciudadano" ? p.match.id : null,
+      created_by: user.id,
+    }));
+
+  if (filas.length === 0) {
+    return { ok: true, message: "Ya estaban registrados.", data: { agregados: 0 } };
+  }
+
+  const { error } = await supabase.from("cobertura_asistentes").insert(filas);
+  if (error) return { ok: false, message: "No se pudieron agregar los asistentes." };
+
+  revalidatePath(`/dashboard/comunicaciones/coberturas/${coberturaId}`);
+  return {
+    ok: true,
+    message: `${filas.length} persona${filas.length === 1 ? "" : "s"} agregada${filas.length === 1 ? "" : "s"}.`,
+    data: { agregados: filas.length },
+  };
 }
 
 /** El dictado más reciente de una cobertura, para poder releerlo. */
@@ -237,7 +341,7 @@ export async function extraerFicha(
   }
 
   try {
-    const ficha = await extraerConIA(respuestas);
+    const { ficha } = await extraerConIA(respuestas);
     if (Object.keys(ficha).length === 0) {
       return { ok: false, message: "La IA no pudo sacar información de lo respondido." };
     }

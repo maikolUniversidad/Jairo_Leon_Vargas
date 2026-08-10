@@ -58,16 +58,20 @@ export interface Cobertura {
 export interface Asistente {
   id: string;
   cobertura_id: string;
+  user_id: string | null;
   contacto_id: string | null;
   ciudadano_id: string | null;
   nombre: string;
   rol: string | null;
+  organizacion: string | null;
+  /** A qué título estuvo: del equipo, aliado, u otro (migración 0040). */
+  vinculo: "equipo" | "aliado" | "otro";
 }
 
 /** Persona de la plataforma que se puede vincular como asistente. */
 export interface PersonaVinculable {
   id: string;
-  tipo: "contacto" | "ciudadano";
+  tipo: "usuario" | "contacto" | "ciudadano";
   nombre: string;
   detalle: string | null;
 }
@@ -204,7 +208,7 @@ export async function getCoberturaDetail(id: string): Promise<{
       .order("created_at", { ascending: false }),
     supabase
       .from("cobertura_asistentes")
-      .select("id, cobertura_id, contacto_id, ciudadano_id, nombre, rol")
+      .select("id, cobertura_id, user_id, contacto_id, ciudadano_id, nombre, rol, organizacion, vinculo")
       .eq("cobertura_id", id)
       .order("created_at", { ascending: true }),
   ]);
@@ -393,7 +397,15 @@ export async function updateCoberturaFicha(
 /** Contactos y ciudadanos que se pueden vincular como asistentes. */
 export async function listPersonasVinculables(): Promise<PersonaVinculable[]> {
   const supabase = await createClient();
-  const [{ data: contactos }, { data: ciudadanos }] = await Promise.all([
+  const [{ data: usuarios }, { data: contactos }, { data: ciudadanos }] = await Promise.all([
+    // Los usuarios de la plataforma van primero: son quienes identifican al
+    // equipo que cubrió la jornada, que es lo que no se podía registrar antes.
+    supabase
+      .from("profiles")
+      .select("id, full_name, cargo")
+      .eq("is_active", true)
+      .order("full_name", { ascending: true })
+      .limit(500),
     supabase
       .from("contacts")
       .select("id, nombre, apellido, organizacion")
@@ -409,6 +421,10 @@ export async function listPersonasVinculables(): Promise<PersonaVinculable[]> {
   ]);
 
   const personas: PersonaVinculable[] = [];
+  for (const u of (usuarios ?? []) as { id: string; full_name: string | null; cargo: string | null }[]) {
+    const nombre = u.full_name?.trim();
+    if (nombre) personas.push({ id: u.id, tipo: "usuario", nombre, detalle: u.cargo ?? null });
+  }
   for (const c of contactos ?? []) {
     personas.push({
       id: c.id,
@@ -432,8 +448,11 @@ export async function addAsistente(input: {
   cobertura_id: string;
   nombre: string;
   rol?: string | null;
+  user_id?: string | null;
   contacto_id?: string | null;
   ciudadano_id?: string | null;
+  vinculo?: "equipo" | "aliado" | "otro";
+  organizacion?: string | null;
 }): Promise<ActionResult<Asistente>> {
   const nombre = input.nombre.trim();
   if (!nombre) {
@@ -451,11 +470,14 @@ export async function addAsistente(input: {
       cobertura_id: input.cobertura_id,
       nombre,
       rol: input.rol?.trim() || null,
+      user_id: input.user_id ?? null,
+      vinculo: input.vinculo ?? "otro",
+      organizacion: input.organizacion?.trim() || null,
       contacto_id: input.contacto_id ?? null,
       ciudadano_id: input.ciudadano_id ?? null,
       created_by: user?.id ?? null,
     })
-    .select("id, cobertura_id, contacto_id, ciudadano_id, nombre, rol")
+    .select("id, cobertura_id, user_id, contacto_id, ciudadano_id, nombre, rol, organizacion, vinculo")
     .single();
 
   if (error) {
