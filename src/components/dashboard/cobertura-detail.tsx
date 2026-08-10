@@ -19,6 +19,7 @@ import {
   type Asistente, type Cobertura, type CoberturaFile, type Fase, type PersonaVinculable,
 } from "@/actions/coberturas";
 import { type EquipoCobertura } from "@/lib/equipos-shared";
+import { type Pregunta, type Respuesta } from "@/lib/cuestionario-shared";
 
 const ESTADOS = ["planeada", "en_curso", "en_edicion", "en_aprobacion", "publicada", "archivada"];
 
@@ -28,12 +29,16 @@ export function CoberturaDetail({
   asistentes,
   personas,
   equipos,
+  preguntas,
+  respuestas,
 }: {
   cobertura: Cobertura;
   files: Record<Fase, CoberturaFile[]>;
   asistentes: Asistente[];
   personas: PersonaVinculable[];
   equipos: EquipoCobertura[];
+  preguntas: Pregunta[];
+  respuestas: Respuesta[];
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -88,7 +93,13 @@ export function CoberturaDetail({
         </CardContent>
       </Card>
 
-      <CoberturaFicha cobertura={cobertura} asistentes={asistentes} personas={personas} />
+      <CoberturaFicha
+        cobertura={cobertura}
+        asistentes={asistentes}
+        personas={personas}
+        preguntas={preguntas}
+        respuestas={respuestas}
+      />
 
       <CoberturaBoard cobertura={cobertura} files={files} equipos={equipos} />
     </>

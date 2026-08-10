@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ClipboardCopy, Loader2, Pencil, Save, Sparkles, X,
+  ClipboardCopy, Loader2, Mic, Pencil, Save, Sparkles, X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { Field, describeFieldErrors, useFieldErrors } from "@/components/ui/fiel
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CoberturaAsistentes } from "@/components/dashboard/cobertura-asistentes";
+import { CoberturaCuestionario } from "@/components/dashboard/cobertura-cuestionario";
+import { CoberturaExtraccionReview } from "@/components/dashboard/cobertura-extraccion-review";
+import {
+  type FichaExtraida, type Pregunta, type Respuesta,
+} from "@/lib/cuestionario-shared";
 import {
   getBriefCobertura, updateCoberturaFicha,
   type Asistente, type Cobertura, type PersonaVinculable,
@@ -111,10 +116,14 @@ export function CoberturaFicha({
   cobertura: inicial,
   asistentes,
   personas,
+  preguntas,
+  respuestas,
 }: {
   cobertura: Cobertura;
   asistentes: Asistente[];
   personas: PersonaVinculable[];
+  preguntas: Pregunta[];
+  respuestas: Respuesta[];
 }) {
   const router = useRouter();
   const fe = useFieldErrors();
@@ -126,6 +135,42 @@ export function CoberturaFicha({
   const [guardando, setGuardando] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [briefManual, setBriefManual] = useState<string | null>(null);
+
+  /* ── Cuestionario por voz ── */
+  const params = useSearchParams();
+  const [cuestionario, setCuestionario] = useState(false);
+  const [propuesta, setPropuesta] = useState<FichaExtraida | null>(null);
+
+  // Al crear una cobertura «dictando» se llega con ?cuestionario=1: así crear y
+  // editar comparten el mismo punto de entrada y no hay que sostener audio en
+  // memoria mientras la cobertura todavía no existe.
+  useEffect(() => {
+    if (params.get("cuestionario") === "1") {
+      setCuestionario(true);
+      setEditando(true);
+      router.replace(`/dashboard/comunicaciones/coberturas/${inicial.id}`, { scroll: false });
+    }
+  }, [params, router, inicial.id]);
+
+  const respondidas = respuestas.filter((r) => r.transcripcion.trim()).length;
+
+  /** Vuelca a los campos del formulario lo que se eligió en la revisión. */
+  const aplicarPropuesta = (elegidos: FichaExtraida) => {
+    setDatos((d) => {
+      const out = { ...d };
+      for (const [campo, valor] of Object.entries(elegidos)) {
+        if (valor === undefined || valor === null) continue;
+        // Los campos de lista y número viven como texto en el formulario.
+        (out as Record<string, string>)[campo] = Array.isArray(valor)
+          ? valor.join(", ")
+          : String(valor);
+      }
+      return out;
+    });
+    setPropuesta(null);
+    setEditando(true);
+    toast.success("Listo. Revisa y guarda la ficha.");
+  };
 
   const set = (campo: keyof Datos, valor: string) => {
     setDatos((d) => ({ ...d, [campo]: valor }));
@@ -205,11 +250,37 @@ export function CoberturaFicha({
 
   return (
     <>
+      <CoberturaCuestionario
+        abierto={cuestionario}
+        coberturaId={inicial.id}
+        preguntas={preguntas}
+        respuestasIniciales={respuestas}
+        onCerrar={() => setCuestionario(false)}
+        onExtraido={(ficha) => {
+          setCuestionario(false);
+          setPropuesta(ficha);
+        }}
+      />
+
+      <CoberturaExtraccionReview
+        abierto={propuesta !== null}
+        propuesta={propuesta ?? {}}
+        actuales={datos as unknown as Record<string, unknown>}
+        onCancelar={() => setPropuesta(null)}
+        onAplicar={aplicarPropuesta}
+      />
+
       <Card className="mb-4">
         <CardContent className="space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Datos de la cobertura</h2>
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCuestionario(true)}>
+                <Mic className="size-4" />
+                {respondidas > 0
+                  ? `Cuestionario · ${respondidas} de ${preguntas.length}`
+                  : "Responder hablando"}
+              </Button>
               <Button variant="outline" size="sm" onClick={copiar} disabled={generando}>
                 {generando ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCopy className="size-4" />}
                 Copiar prompt

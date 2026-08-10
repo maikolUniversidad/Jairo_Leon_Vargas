@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Mic, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,27 @@ export function CoberturaCreateDialog() {
   const [pending, start] = useTransition();
   const [f, setF] = useState({ nombre: "", descripcion: "", fecha: "", lugar: "" });
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  /**
+   * Crea la cobertura y, si se pidió dictar, abre el cuestionario ya sobre ella.
+   *
+   * Al crear todavía no hay `cobertura_id` donde guardar respuestas, así que
+   * primero se crea y después se pregunta. Un paso invisible para quien lo usa,
+   * y la grabación no se pierde si la creación falla.
+   */
+  const crear = (dictando: boolean) => {
+    if (!f.nombre.trim()) return toast.error("Escribe el nombre.");
+    start(async () => {
+      const res = await createCobertura(f);
+      if (res.ok && res.data) {
+        toast.success(res.message);
+        setOpen(false);
+        router.push(
+          `/dashboard/comunicaciones/coberturas/${res.data.id}${dictando ? "?cuestionario=1" : ""}`,
+        );
+      } else toast.error(res.message);
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -55,23 +76,21 @@ export function CoberturaCreateDialog() {
             Se creará una carpeta en Google Drive con el nombre de la cobertura y subcarpetas
             <strong> Contenido Crudo</strong>, <strong>Editado</strong> y <strong>Aprobado</strong>.
           </p>
-          <Button
-            className="w-full"
-            disabled={pending}
-            onClick={() => {
-              if (!f.nombre.trim()) return toast.error("Escribe el nombre.");
-              start(async () => {
-                const res = await createCobertura(f);
-                if (res.ok && res.data) {
-                  toast.success(res.message);
-                  setOpen(false);
-                  router.push(`/dashboard/comunicaciones/coberturas/${res.data.id}`);
-                } else toast.error(res.message);
-              });
-            }}
-          >
-            {pending ? "Creando…" : "Crear cobertura"}
-          </Button>
+          <div className="space-y-2">
+            <Button className="w-full" disabled={pending} onClick={() => crear(false)}>
+              {pending ? "Creando…" : "Crear cobertura"}
+            </Button>
+            {/* Atajo para quien vuelve del territorio: crear y contarlo hablando
+                en vez de escribir los nueve campos de la ficha. */}
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={pending}
+              onClick={() => crear(true)}
+            >
+              <Mic className="size-4" /> Crear y responder hablando
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
