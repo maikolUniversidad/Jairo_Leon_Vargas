@@ -3,7 +3,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": resolve(__dirname, "./src") },
+    alias: {
+      "@": resolve(__dirname, "./src"),
+      // `server-only` solo existe dentro del bundler de Next: es un centinela
+      // que rompe el build si un módulo de servidor acaba en el cliente. Aquí se
+      // apunta a un archivo vacío para poder probar esos módulos, sin quitar la
+      // guarda en producción.
+      "server-only": resolve(__dirname, "./tests/helpers/server-only-stub.ts"),
+    },
   },
   test: {
     include: ["tests/**/*.test.ts"],
