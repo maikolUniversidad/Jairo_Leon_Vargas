@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { subirArchivoCobertura } from "@/lib/upload-cobertura";
-import { type CoberturaFile, type Fase } from "@/actions/coberturas";
+import { type CoberturaFile, type Fase, type MetadataArchivo } from "@/actions/coberturas";
+import { type TipoContenido } from "@/lib/media-kind";
 
 /** Tres subidas a la vez: aprovecha el ancho de banda sin ahogar la conexión. */
 const CONCURRENCIA = 3;
@@ -19,6 +20,22 @@ export interface ItemSubida {
   /** 0–100, redondeado: evita re-renderizar el panel con cada evento del XHR. */
   progreso: number;
   message?: string;
+  /* ── Atribución asignada en la revisión previa ── */
+  equipoId: string;
+  tipoContenido: TipoContenido;
+  dispositivo: string | null;
+}
+
+/**
+ * Lo que entrega la pantalla de revisión: el archivo ya viene clasificado y con
+ * equipo. La cola no clasifica nada, solo transporta.
+ */
+export interface ArchivoRevisado {
+  file: File;
+  fase: Fase;
+  equipoId: string;
+  tipoContenido: TipoContenido;
+  dispositivo: string | null;
 }
 
 interface Pendiente {
@@ -50,19 +67,22 @@ export function useUploadQueue(
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }, []);
 
-  const encolar = useCallback((files: File[], fase: Fase) => {
+  const encolar = useCallback((revisados: ArchivoRevisado[]) => {
     const nuevos: ItemSubida[] = [];
-    for (const file of files) {
-      if (file.size === 0) continue; // las carpetas llegan como entradas vacías
+    for (const r of revisados) {
+      if (r.file.size === 0) continue; // las carpetas llegan como entradas vacías
       const id = `up-${++contador.current}`;
-      pendientes.current.set(id, { file, controller: new AbortController() });
+      pendientes.current.set(id, { file: r.file, controller: new AbortController() });
       nuevos.push({
         id,
-        nombre: file.name,
-        fase,
-        size: file.size,
+        nombre: r.file.name,
+        fase: r.fase,
+        size: r.file.size,
         estado: "espera",
         progreso: 0,
+        equipoId: r.equipoId,
+        tipoContenido: r.tipoContenido,
+        dispositivo: r.dispositivo,
       });
     }
     if (nuevos.length > 0) setItems((prev) => [...prev, ...nuevos]);
@@ -74,9 +94,15 @@ export function useUploadQueue(
       const pendiente = pendientes.current.get(item.id);
       if (!pendiente) return;
 
+      const meta: MetadataArchivo = {
+        equipo_id: item.equipoId,
+        tipo_contenido: item.tipoContenido,
+        dispositivo: item.dispositivo,
+      };
+
       let ultimo = 0;
       try {
-        const res = await subirArchivoCobertura(coberturaId, item.fase, pendiente.file, {
+        const res = await subirArchivoCobertura(coberturaId, item.fase, pendiente.file, meta, {
           signal: pendiente.controller.signal,
           onProgress: (f) => {
             const pct = Math.round(f * 100);

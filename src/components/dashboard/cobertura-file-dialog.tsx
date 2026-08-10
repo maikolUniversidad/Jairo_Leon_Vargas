@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/utils";
-import { formatBytes, mediaKind } from "@/lib/media-kind";
+import { formatBytes, mediaKind, tipoContenido } from "@/lib/media-kind";
 import { reemplazarArchivoCobertura, subirArchivoCobertura } from "@/lib/upload-cobertura";
 import {
   removeCoberturaFile, updateCoberturaFileMeta, type CoberturaFile, type Fase,
@@ -167,11 +167,29 @@ export function CoberturaFileDialog({
   };
 
   const derivar = async (nuevo: File) => {
+    // El derivado es el mismo material editado: hereda equipo y dispositivo del
+    // original. El tipo sí se recalcula, porque de un crudo de video puede salir
+    // perfectamente una foto exportada.
+    if (!file.equipo_id) {
+      toast.error("Asigna primero un equipo al archivo original.");
+      return;
+    }
+
     setTransferencia("Subiendo… 0%");
-    const res = await subirArchivoCobertura(file.cobertura_id, faseDerivada, nuevo, {
-      origenFileId: file.id,
-      onProgress: (f) => setTransferencia(`Subiendo… ${Math.round(f * 100)}%`),
-    });
+    const res = await subirArchivoCobertura(
+      file.cobertura_id,
+      faseDerivada,
+      nuevo,
+      {
+        equipo_id: file.equipo_id,
+        tipo_contenido: tipoContenido(mediaKind(nuevo.type, nuevo.name)),
+        dispositivo: file.dispositivo,
+      },
+      {
+        origenFileId: file.id,
+        onProgress: (f: number) => setTransferencia(`Subiendo… ${Math.round(f * 100)}%`),
+      },
+    );
     setTransferencia(null);
     if (res.ok && res.file) {
       onNuevoArchivo(res.file);

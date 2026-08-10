@@ -18,6 +18,7 @@ import {
 } from "@/lib/google-drive";
 import { logActivity } from "@/lib/activity";
 import { construirBrief } from "@/lib/cobertura-brief";
+import { TIPOS_CONTENIDO, type TipoContenido } from "@/lib/media-kind";
 import { type ActionResult } from "./types";
 
 export type Fase = "crudo" | "editado" | "aprobado";
@@ -88,7 +89,52 @@ export interface CoberturaFile {
   origen_file_id: string | null;
   version: number;
   created_at: string;
+  /* ── Atribución (migración 0034) ── */
+  equipo_id: string | null;
+  /** Resuelto por join; null si el equipo se desactivó o se borró. */
+  equipo_nombre: string | null;
+  dispositivo: string | null;
+  tipo_contenido: TipoContenido;
 }
+
+/** Metadata que la pantalla de revisión asigna a cada archivo antes de subirlo. */
+export interface MetadataArchivo {
+  equipo_id: string;
+  tipo_contenido: TipoContenido;
+  dispositivo?: string | null;
+}
+
+/**
+ * Revalida en el servidor lo que mandó el cliente. La pantalla de revisión es
+ * comodidad de la interfaz, no un control de acceso: quien llame directo a la
+ * server action no puede saltarse esto.
+ */
+async function validarMetadata(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  meta: MetadataArchivo,
+): Promise<string | null> {
+  if (!TIPOS_CONTENIDO.includes(meta.tipo_contenido)) {
+    return "Tipo de contenido no válido.";
+  }
+  const { data } = await supabase
+    .from("equipos_cobertura")
+    .select("id")
+    .eq("id", meta.equipo_id)
+    .eq("activo", true)
+    .maybeSingle();
+  return data ? null : "El equipo no existe o está inactivo.";
+}
+
+/** Aplana el join de equipo en la forma plana que consume la interfaz. */
+function aplanarFile(row: Record<string, unknown>): CoberturaFile {
+  const equipo = row.equipos_cobertura as { nombre: string } | null | undefined;
+  const resto = { ...row };
+  delete resto.equipos_cobertura;
+  return { ...resto, equipo_nombre: equipo?.nombre ?? null } as CoberturaFile;
+}
+
+/** Columnas del archivo más el nombre del equipo que lo produjo. */
+const SELECT_FILE = "*, equipos_cobertura(nombre)";
 
 export async function listCoberturas(): Promise<Cobertura[]> {
   const supabase = await createClient();
@@ -112,7 +158,7 @@ export async function getCoberturaDetail(id: string): Promise<{
     supabase.from("coberturas").select("*").eq("id", id).is("deleted_at", null).maybeSingle(),
     supabase
       .from("cobertura_files")
-      .select("*")
+      .select(SELECT_FILE)
       .eq("cobertura_id", id)
       .order("orden", { ascending: true })
       .order("created_at", { ascending: false }),
@@ -123,7 +169,10 @@ export async function getCoberturaDetail(id: string): Promise<{
       .order("created_at", { ascending: true }),
   ]);
   const grouped: Record<Fase, CoberturaFile[]> = { crudo: [], editado: [], aprobado: [] };
-  for (const f of (files as CoberturaFile[]) ?? []) grouped[f.fase]?.push(f);
+  for (const row of (files as Record<string, unknown>[]) ?? []) {
+    const f = aplanarFile(row);
+    grouped[f.fase]?.push(f);
+  }
   return {
     cobertura: (cob as Cobertura) ?? null,
     files: grouped,
@@ -449,11 +498,16 @@ export async function addCoberturaFile(input: {
   mime: string;
   size?: number;
   origen_file_id?: string | null;
+  meta: MetadataArchivo;
 }): Promise<ActionResult<CoberturaFile>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const invalida = await validarMetadata(supabase, input.meta);
+  if (invalida) return { ok: false, message: invalida };
+
   const admin = createAdminClient();
 
   const publicUrl = admin.storage.from("coberturas").getPublicUrl(input.path).data.publicUrl;
@@ -502,15 +556,18 @@ export async function addCoberturaFile(input: {
       size: input.size ?? null,
       orden: await nextOrden(input.cobertura_id, input.fase),
       origen_file_id: input.origen_file_id ?? null,
+      equipo_id: input.meta.equipo_id,
+      tipo_contenido: input.meta.tipo_contenido,
+      dispositivo: input.meta.dispositivo ?? null,
       created_by: user?.id ?? null,
     })
-    .select("*")
+    .select(SELECT_FILE)
     .single();
   if (error || !data) return { ok: false, message: "No se pudo registrar el archivo." };
 
   await logActivity("subida", "cobertura", input.cobertura_id, `${input.fase}: ${input.name}`);
   revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
-  return { ok: true, message: "Archivo agregado.", data: data as CoberturaFile };
+  return { ok: true, message: "Archivo agregado.", data: aplanarFile(data) };
 }
 
 export async function removeCoberturaFile(id: string, storagePath?: string | null): Promise<ActionResult> {
@@ -569,6 +626,7 @@ export async function startCoberturaUpload(input: {
   name: string;
   mime: string;
   size: number;
+  meta: MetadataArchivo;
 }): Promise<ActionResult<UploadTicket>> {
   const supabase = await createClient();
   const {
@@ -576,6 +634,11 @@ export async function startCoberturaUpload(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Sesión no válida." };
   if (!FASES.includes(input.fase)) return { ok: false, message: "Fase no válida." };
+
+  // Se valida ya, antes de abrir la sesión reanudable: si el equipo no sirve,
+  // mejor enterarse antes de que el navegador empiece a mandar bytes a Drive.
+  const invalida = await validarMetadata(supabase, input.meta);
+  if (invalida) return { ok: false, message: invalida };
 
   const folderId = await faseFolderId(input.cobertura_id, input.fase);
   if (!folderId) return { ok: true, message: "ok", data: { mode: "storage" } };
@@ -600,11 +663,15 @@ export async function finishCoberturaUpload(input: {
   mime: string;
   size: number;
   origen_file_id?: string | null;
+  meta: MetadataArchivo;
 }): Promise<ActionResult<CoberturaFile>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const invalida = await validarMetadata(supabase, input.meta);
+  if (invalida) return { ok: false, message: invalida };
 
   await makeDriveFilePublic(input.drive_file_id);
 
@@ -621,15 +688,18 @@ export async function finishCoberturaUpload(input: {
       size: input.size ?? null,
       orden: await nextOrden(input.cobertura_id, input.fase),
       origen_file_id: input.origen_file_id ?? null,
+      equipo_id: input.meta.equipo_id,
+      tipo_contenido: input.meta.tipo_contenido,
+      dispositivo: input.meta.dispositivo ?? null,
       created_by: user?.id ?? null,
     })
-    .select("*")
+    .select(SELECT_FILE)
     .single();
   if (error || !data) return { ok: false, message: "No se pudo registrar el archivo." };
 
   await logActivity("subida", "cobertura", input.cobertura_id, `${input.fase}: ${input.name}`);
   revalidatePath(`/dashboard/comunicaciones/coberturas/${input.cobertura_id}`);
-  return { ok: true, message: "Archivo agregado.", data: data as CoberturaFile };
+  return { ok: true, message: "Archivo agregado.", data: aplanarFile(data) };
 }
 
 async function nextOrden(coberturaId: string, fase: Fase): Promise<number> {

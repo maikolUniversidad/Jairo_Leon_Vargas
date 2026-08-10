@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { CoberturaFileCard } from "@/components/dashboard/cobertura-file-card";
 import { CoberturaFileDialog } from "@/components/dashboard/cobertura-file-dialog";
 import { CoberturaUploadQueue } from "@/components/dashboard/cobertura-upload-queue";
-import { useUploadQueue } from "@/hooks/use-upload-queue";
+import { CoberturaPreviewDialog } from "@/components/dashboard/cobertura-preview-dialog";
+import { useUploadQueue, type ArchivoRevisado } from "@/hooks/use-upload-queue";
 import { moveCoberturaFile, type Cobertura, type CoberturaFile, type Fase } from "@/actions/coberturas";
+import { type EquipoCobertura } from "@/lib/equipos-shared";
 
 /** Tipo propio del arrastre interno: distingue una tarjeta de un archivo del escritorio. */
 const TIPO_TARJETA = "application/x-cobertura-file";
@@ -25,9 +27,11 @@ const FASES: Fase[] = ["crudo", "editado", "aprobado"];
 export function CoberturaBoard({
   cobertura,
   files: filesIni,
+  equipos,
 }: {
   cobertura: Cobertura;
   files: Record<Fase, CoberturaFile[]>;
+  equipos: EquipoCobertura[];
 }) {
   const [files, setFiles] = useState<CoberturaFile[]>(() =>
     FASES.flatMap((f) => filesIni[f] ?? []),
@@ -36,6 +40,8 @@ export function CoberturaBoard({
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [columnaActiva, setColumnaActiva] = useState<Fase | null>(null);
   const [anteCard, setAnteCard] = useState<string | null>(null);
+  /** Lote esperando revisión, antes de entrar a la cola de subida. */
+  const [porRevisar, setPorRevisar] = useState<{ archivos: File[]; fase: Fase } | null>(null);
 
   const agregar = useCallback((nuevo: CoberturaFile) => {
     setFiles((prev) => (prev.some((f) => f.id === nuevo.id) ? prev : [...prev, nuevo]));
@@ -98,11 +104,26 @@ export function CoberturaBoard({
 
   /* ───────────────────────── Archivos del escritorio ───────────────────────── */
 
+  /**
+   * Soltar ya no sube: abre la revisión previa. Ahí se asigna el equipo y se
+   * confirma el tipo, y solo entonces entra a la cola.
+   */
   const soltarArchivos = (fase: Fase, lista: FileList) => {
-    const archivos = Array.from(lista);
-    const encolados = cola.encolar(archivos, fase);
-    if (encolados === 0) {
+    // Las carpetas llegan como entradas de 0 bytes; se descartan aquí para que
+    // el conteo del diálogo sea el real.
+    const archivos = Array.from(lista).filter((f) => f.size > 0);
+    if (archivos.length === 0) {
       toast.error("No se reconoció ningún archivo. Para carpetas usa el botón «Subir carpeta».");
+      return;
+    }
+    setPorRevisar({ archivos, fase });
+  };
+
+  const confirmarRevision = (revisados: ArchivoRevisado[]) => {
+    setPorRevisar(null);
+    const encolados = cola.encolar(revisados);
+    if (encolados > 0) {
+      toast.success(`${encolados} archivo${encolados === 1 ? "" : "s"} en cola.`);
     }
   };
 
@@ -152,6 +173,15 @@ export function CoberturaBoard({
         onEliminar={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
         onNuevoArchivo={agregar}
         onMover={(fase) => seleccionado && moverArchivo(seleccionado.id, fase, null)}
+      />
+
+      <CoberturaPreviewDialog
+        abierto={porRevisar !== null}
+        archivos={porRevisar?.archivos ?? []}
+        faseInicial={porRevisar?.fase ?? "crudo"}
+        equipos={equipos}
+        onCancelar={() => setPorRevisar(null)}
+        onConfirmar={confirmarRevision}
       />
 
       <CoberturaUploadQueue

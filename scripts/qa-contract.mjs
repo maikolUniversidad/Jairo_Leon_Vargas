@@ -55,6 +55,9 @@ export const TABLAS_NUCLEO = [
   "profiles", "user_roles", "roles_catalog", "role_permissions", "areas",
   "citizens", "contacts", "requests", "tasks", "events", "zones",
   "documents", "content_posts", "notifications", "audit_logs", "settings",
+  // Sin equipos no se puede subir material a una cobertura: la revisión previa
+  // los exige y el servidor los revalida.
+  "equipos_cobertura",
 ];
 
 /** Triggers críticos: [tabla, nombre, esquema]. */

@@ -38,6 +38,38 @@ export function mediaKind(mime: string | null | undefined, nombre: string): Medi
   return "archivo";
 }
 
+/**
+ * Etiqueta con la que se clasifica el material de una cobertura.
+ *
+ * Es un valor GUARDADO, no derivado: `mediaKind()` da el default, pero se puede
+ * corregir a mano en la revisión previa y esa corrección tiene que sobrevivir.
+ * Debe coincidir con el check de `cobertura_files.tipo_contenido` (0034).
+ */
+export const TIPOS_CONTENIDO = ["foto", "video", "audio", "documento", "otro"] as const;
+export type TipoContenido = (typeof TIPOS_CONTENIDO)[number];
+
+export const TIPO_CONTENIDO_LABEL: Record<TipoContenido, string> = {
+  foto: "Foto",
+  video: "Video",
+  audio: "Audio",
+  documento: "Documento",
+  otro: "Otro",
+};
+
+const KIND_A_TIPO: Record<MediaKind, TipoContenido> = {
+  imagen: "foto",
+  video: "video",
+  audio: "audio",
+  pdf: "documento",
+  documento: "documento",
+  archivo: "otro",
+};
+
+/** Etiqueta por defecto de un archivo, a partir de su clasificación de medio. */
+export function tipoContenido(kind: MediaKind): TipoContenido {
+  return KIND_A_TIPO[kind];
+}
+
 /** Tipos para los que Drive genera una miniatura aprovechable. */
 export function tieneMiniatura(kind: MediaKind): boolean {
   return kind === "imagen" || kind === "video" || kind === "pdf" || kind === "documento";

@@ -18,6 +18,7 @@ import {
   repairCoberturaDrive, updateCoberturaEstado,
   type Asistente, type Cobertura, type CoberturaFile, type Fase, type PersonaVinculable,
 } from "@/actions/coberturas";
+import { type EquipoCobertura } from "@/lib/equipos-shared";
 
 const ESTADOS = ["planeada", "en_curso", "en_edicion", "en_aprobacion", "publicada", "archivada"];
 
@@ -26,11 +27,13 @@ export function CoberturaDetail({
   files,
   asistentes,
   personas,
+  equipos,
 }: {
   cobertura: Cobertura;
   files: Record<Fase, CoberturaFile[]>;
   asistentes: Asistente[];
   personas: PersonaVinculable[];
+  equipos: EquipoCobertura[];
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -87,7 +90,7 @@ export function CoberturaDetail({
 
       <CoberturaFicha cobertura={cobertura} asistentes={asistentes} personas={personas} />
 
-      <CoberturaBoard cobertura={cobertura} files={files} />
+      <CoberturaBoard cobertura={cobertura} files={files} equipos={equipos} />
     </>
   );
 }

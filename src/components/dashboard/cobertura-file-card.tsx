@@ -6,7 +6,13 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatBytes, mediaKind, tieneMiniatura, type MediaKind } from "@/lib/media-kind";
+import {
+  TIPO_CONTENIDO_LABEL,
+  formatBytes,
+  mediaKind,
+  tieneMiniatura,
+  type MediaKind,
+} from "@/lib/media-kind";
 import { type CoberturaFile } from "@/actions/coberturas";
 
 const ICONO: Record<MediaKind, typeof FileText> = {
@@ -16,15 +22,6 @@ const ICONO: Record<MediaKind, typeof FileText> = {
   pdf: FileText,
   documento: FileText,
   archivo: FileQuestion,
-};
-
-const KIND_LABEL: Record<MediaKind, string> = {
-  imagen: "Imagen",
-  video: "Video",
-  audio: "Audio",
-  pdf: "PDF",
-  documento: "Documento",
-  archivo: "Archivo",
 };
 
 /** Fuente de la miniatura: el proxy propio para Drive, la URL directa si sigue en Supabase. */
@@ -125,9 +122,19 @@ export function CoberturaFileCard({
 
       <div className="px-2 py-1.5">
         <p className="truncate text-xs font-medium leading-tight">{file.nombre}</p>
+        {/* La etiqueta viene de la columna, no de `kind`: es el valor que se pudo
+            corregir a mano en la revisión previa. `kind` solo decide cómo pintar. */}
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {KIND_LABEL[kind]} · {formatBytes(file.size)}
+          {TIPO_CONTENIDO_LABEL[file.tipo_contenido]} · {formatBytes(file.size)}
         </p>
+        {(file.equipo_nombre || file.dispositivo) && (
+          <p
+            className="mt-0.5 truncate text-[11px] text-muted-foreground/80"
+            title={[file.equipo_nombre, file.dispositivo].filter(Boolean).join(" · ")}
+          >
+            {[file.equipo_nombre, file.dispositivo].filter(Boolean).join(" · ")}
+          </p>
+        )}
       </div>
     </article>
   );

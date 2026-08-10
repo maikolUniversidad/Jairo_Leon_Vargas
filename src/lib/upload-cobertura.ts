@@ -8,6 +8,7 @@ import {
   startCoberturaUpload,
   type CoberturaFile,
   type Fase,
+  type MetadataArchivo,
 } from "@/actions/coberturas";
 
 /** Trozo de 8 MB: múltiplo de 256 KB, como exige Drive para las subidas por partes. */
@@ -110,6 +111,7 @@ async function subirPorStorage(
   coberturaId: string,
   fase: Fase,
   file: File,
+  meta: MetadataArchivo,
   origenFileId: string | null,
   opts: MediaUploadOptions,
 ): Promise<MediaUploadResult> {
@@ -134,6 +136,7 @@ async function subirPorStorage(
     mime: file.type,
     size: file.size,
     origen_file_id: origenFileId,
+    meta,
   });
   opts.onProgress?.(1);
   return res.ok
@@ -143,11 +146,17 @@ async function subirPorStorage(
 
 /* ────────────────────────────── API pública ────────────────────────────── */
 
-/** Sube un archivo a la fase indicada de una cobertura. */
+/**
+ * Sube un archivo a la fase indicada de una cobertura.
+ *
+ * `meta` llega desde la pantalla de revisión previa y viaja con el archivo por
+ * los dos caminos posibles (Drive directo o Supabase). El servidor la revalida.
+ */
 export async function subirArchivoCobertura(
   coberturaId: string,
   fase: Fase,
   file: File,
+  meta: MetadataArchivo,
   opts: MediaUploadOptions & { origenFileId?: string | null } = {},
 ): Promise<MediaUploadResult> {
   if (!file || file.size === 0) return { ok: false, message: "El archivo está vacío." };
@@ -159,6 +168,7 @@ export async function subirArchivoCobertura(
     name: file.name,
     mime: file.type,
     size: file.size,
+    meta,
   });
   if (!ticket.ok) return { ok: false, message: ticket.message };
 
@@ -173,6 +183,7 @@ export async function subirArchivoCobertura(
         mime: file.type,
         size: file.size,
         origen_file_id: origenFileId,
+        meta,
       });
       return res.ok
         ? { ok: true, message: res.message, file: res.data }
@@ -188,7 +199,7 @@ export async function subirArchivoCobertura(
   }
 
   if (opts.signal?.aborted) return { ok: false, cancelado: true, message: "Subida cancelada." };
-  return subirPorStorage(coberturaId, fase, file, origenFileId, opts);
+  return subirPorStorage(coberturaId, fase, file, meta, origenFileId, opts);
 }
 
 /**

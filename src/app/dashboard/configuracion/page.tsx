@@ -12,6 +12,8 @@ import { MisredesManager } from "@/components/dashboard/misredes-manager";
 import { ConocimientoManager } from "@/components/dashboard/kb/ConocimientoManager";
 import { listUsers } from "@/actions/usuarios";
 import { listRoles, listPermissions } from "@/actions/roles";
+import { listEquipos } from "@/actions/equipos";
+import { EquiposManager } from "@/components/dashboard/equipos-manager";
 import { getDriveStatus } from "@/actions/google";
 import { listConnections } from "@/actions/conexiones";
 import { getMisredesConfig } from "@/actions/misredes";
@@ -21,11 +23,13 @@ export default async function ConfiguracionPage() {
   // Solo admins (defensa adicional a RLS).
   await requireRole(["super_admin", "administrador"]);
 
-  const [users, roles, permissions, driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats] =
+  const [users, roles, permissions, equipos, driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats] =
     await Promise.all([
       listUsers(),
       listRoles(),
       listPermissions(),
+      // Incluye los inactivos: aquí es donde se vuelven a activar.
+      listEquipos(false),
       getDriveStatus(),
       listConnections(),
       getMisredesConfig(),
@@ -47,6 +51,9 @@ export default async function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="roles">
           <RolesManager roles={roles} permissions={permissions} />
+        </TabsContent>
+        <TabsContent value="equipos">
+          <EquiposManager equipos={equipos} />
         </TabsContent>
         <TabsContent value="integraciones" className="space-y-6">
           <Suspense fallback={null}>

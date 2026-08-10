@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/shared";
 import { CoberturaDetail } from "@/components/dashboard/cobertura-detail";
 import { getCoberturaDetail, listPersonasVinculables } from "@/actions/coberturas";
+import { listEquipos } from "@/actions/equipos";
 
 export default async function CoberturaDetailPage({
   params,
@@ -10,9 +11,12 @@ export default async function CoberturaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [{ cobertura, files, asistentes }, personas] = await Promise.all([
+  // Los equipos se cargan aquí, no al abrir el diálogo: evita una ida y vuelta
+  // justo cuando el usuario acaba de soltar los archivos.
+  const [{ cobertura, files, asistentes }, personas, equipos] = await Promise.all([
     getCoberturaDetail(id),
     listPersonasVinculables(),
+    listEquipos(),
   ]);
   if (!cobertura) notFound();
 
@@ -27,6 +31,7 @@ export default async function CoberturaDetailPage({
         files={files}
         asistentes={asistentes}
         personas={personas}
+        equipos={equipos}
       />
     </>
   );
