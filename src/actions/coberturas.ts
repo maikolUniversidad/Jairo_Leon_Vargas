@@ -19,6 +19,7 @@ import {
 import { logActivity } from "@/lib/activity";
 import { construirBrief } from "@/lib/cobertura-brief";
 import { TIPOS_CONTENIDO, type TipoContenido } from "@/lib/media-kind";
+import { miniaturaSrc, type PiezaConMiniatura } from "@/lib/miniatura";
 import { type ActionResult } from "./types";
 
 export type Fase = "crudo" | "editado" | "aprobado";
@@ -1000,4 +1001,66 @@ export async function finishCoberturaReplace(input: {
 
   revalidatePath(`/dashboard/comunicaciones/coberturas/${prev.cobertura_id}`);
   return { ok: true, message: `Versión ${(prev.version ?? 1) + 1} guardada.`, data: data as CoberturaFile };
+}
+
+/* ────────────────────────── Portadas del listado ────────────────────────── */
+
+/** Cuántas piezas rotan en la portada de cada cobertura. */
+const PIEZAS_PORTADA = 6;
+
+/**
+ * Prioridad de una pieza para la portada: primero lo que alguien marcó como
+ * destacado, después lo aprobado, y el crudo de último. Dentro de cada grupo el
+ * orden es aleatorio, así el listado no se ve igual en cada visita.
+ */
+function pesoPortada(f: { destacado: boolean | null; fase: Fase }): number {
+  if (f.destacado) return 0;
+  if (f.fase === "aprobado") return 1;
+  if (f.fase === "editado") return 2;
+  return 3;
+}
+
+/**
+ * Miniaturas para la portada de cada cobertura del listado.
+ *
+ * Se resuelve en una sola consulta para todas: una por cobertura convertiría el
+ * listado en N+1 peticiones. El barajado va aquí, en el servidor, para que el
+ * cliente reciba el orden ya hecho y no haya desajuste de hidratación.
+ */
+export async function listPortadas(
+  coberturaIds: string[],
+): Promise<Record<string, string[]>> {
+  if (coberturaIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("cobertura_files")
+    .select("cobertura_id, fase, nombre, url, drive_file_id, storage_path, mime, destacado")
+    .in("cobertura_id", coberturaIds)
+    .in("tipo_contenido", ["foto", "video"]);
+
+  type Fila = PiezaConMiniatura & {
+    cobertura_id: string;
+    fase: Fase;
+    destacado: boolean | null;
+  };
+
+  const porCobertura = new Map<string, Fila[]>();
+  for (const fila of (data ?? []) as Fila[]) {
+    const lista = porCobertura.get(fila.cobertura_id) ?? [];
+    lista.push(fila);
+    porCobertura.set(fila.cobertura_id, lista);
+  }
+
+  const out: Record<string, string[]> = {};
+  for (const [id, filas] of porCobertura) {
+    const srcs = filas
+      .map((f) => ({ f, r: Math.random() }))
+      .sort((a, b) => pesoPortada(a.f) - pesoPortada(b.f) || a.r - b.r)
+      .map(({ f }) => miniaturaSrc(f, 600))
+      .filter((s): s is string => s !== null)
+      .slice(0, PIEZAS_PORTADA);
+    if (srcs.length > 0) out[id] = srcs;
+  }
+  return out;
 }
