@@ -10,6 +10,7 @@ import { mediaKind, type MediaKind } from "@/lib/media-kind";
 
 export interface BriefCobertura {
   nombre: string;
+  drive_link?: string | null;
   descripcion?: string | null;
   fecha?: string | null;
   lugar?: string | null;
@@ -28,7 +29,11 @@ export interface BriefCobertura {
 export interface BriefAsistente {
   nombre: string;
   rol?: string | null;
-  vinculo?: "contacto" | "ciudadano" | null;
+  /** A qué título estuvo (migración 0040). */
+  vinculo?: "equipo" | "aliado" | "otro" | null;
+  organizacion?: string | null;
+  /** Con qué registro de la plataforma está enlazado, si lo está. */
+  enlace?: "usuario" | "contacto" | "ciudadano" | null;
 }
 
 export interface BriefArchivo {
@@ -39,6 +44,18 @@ export interface BriefArchivo {
   /** Lo que detectó el análisis automático de la pieza. */
   analisis?: string | null;
   analisis_etiquetas?: string[] | null;
+  /* ── Atribución (migración 0034) ── */
+  equipo?: string | null;
+  dispositivo?: string | null;
+  responsable?: string | null;
+  tags?: string[] | null;
+  destacado?: boolean | null;
+}
+
+/** La grabación corrida con la que se contó la jornada (migración 0039). */
+export interface BriefDictado {
+  transcripcion: string;
+  created_at?: string | null;
 }
 
 const FASE_LABEL: Record<BriefArchivo["fase"], string> = {
@@ -106,21 +123,48 @@ function resumirTipos(archivos: BriefArchivo[]): string {
   return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
+const GRUPO_ASISTENTE = [
+  { vinculo: "equipo", titulo: "Del equipo" },
+  { vinculo: "aliado", titulo: "Aliados y organizaciones" },
+  { vinculo: "otro", titulo: "Otros asistentes" },
+] as const;
+
+/**
+ * Una línea por persona, agrupada por a qué título estuvo.
+ *
+ * Antes se agrupaba por rol y solo se listaban nombres. Con el vínculo y la
+ * organización eso perdía justo lo que hace útil el dato: distinguir quién del
+ * equipo cubrió la jornada de quién vino de fuera, y de dónde venía.
+ */
 function seccionAsistentes(asistentes: BriefAsistente[]): string | null {
   if (asistentes.length === 0) return null;
 
-  const porRol = new Map<string, string[]>();
-  for (const a of asistentes) {
-    const rol = a.rol?.trim() || "Asistentes";
-    const lista = porRol.get(rol) ?? [];
-    lista.push(a.nombre.trim());
-    porRol.set(rol, lista);
-  }
+  const partes: string[] = ["### Quiénes estuvieron"];
+  for (const { vinculo, titulo } of GRUPO_ASISTENTE) {
+    const delGrupo = asistentes.filter((a) => (a.vinculo ?? "otro") === vinculo);
+    if (delGrupo.length === 0) continue;
 
-  const lineas = [...porRol.entries()].map(
-    ([rol, nombres]) => `- **${rol}:** ${nombres.join(", ")}`,
-  );
-  return `### Quiénes estuvieron\n${lineas.join("\n")}`;
+    partes.push(`**${titulo} (${delGrupo.length})**`);
+    for (const a of delGrupo) {
+      const detalles = [a.rol?.trim(), a.organizacion?.trim()].filter(Boolean);
+      partes.push(
+        detalles.length > 0
+          ? `- ${a.nombre.trim()} — ${detalles.join(" · ")}`
+          : `- ${a.nombre.trim()}`,
+      );
+    }
+  }
+  return partes.join("\n");
+}
+
+/** Procedencia de una pieza: quién la produjo, con qué y a quién se acredita. */
+function procedencia(a: BriefArchivo): string {
+  const partes = [
+    a.equipo?.trim(),
+    a.dispositivo?.trim(),
+    a.responsable?.trim() ? `resp. ${a.responsable.trim()}` : null,
+  ].filter(Boolean);
+  return partes.length > 0 ? ` [${partes.join(" · ")}]` : "";
 }
 
 /** Lo que se sabe de una pieza: lo escrito a mano manda sobre lo automático. */
@@ -129,10 +173,13 @@ function detallePieza(a: BriefArchivo): string | null {
   const automatico = vacio(a.analisis) ? null : a.analisis!.trim();
   // Si alguien se tomó el trabajo de describir la pieza, esa descripción va
   // primero; el análisis solo completa, y solo si dice algo distinto.
-  if (manual && automatico && automatico !== manual) return `${manual} — Análisis: ${automatico}`;
-  if (manual) return manual;
-  if (automatico) return `Análisis: ${automatico}`;
-  return null;
+  const etiquetas = (a.tags ?? []).map((t) => t.trim()).filter(Boolean);
+  const extra = etiquetas.length > 0 ? ` (etiquetas: ${etiquetas.join(", ")})` : "";
+
+  if (manual && automatico && automatico !== manual) return `${manual} — Análisis: ${automatico}${extra}`;
+  if (manual) return `${manual}${extra}`;
+  if (automatico) return `Análisis: ${automatico}${extra}`;
+  return etiquetas.length > 0 ? `Etiquetas: ${etiquetas.join(", ")}` : null;
 }
 
 /** Todas las etiquetas detectadas en el material, de más a menos frecuentes. */
@@ -167,14 +214,49 @@ function seccionContenido(archivos: BriefArchivo[]): string | null {
     // detectado por el análisis. Un nombre de archivo de cámara no aporta nada.
     for (const a of dellaFase) {
       const detalle = detallePieza(a);
-      if (detalle) partes.push(`  - ${a.nombre.trim()}: ${detalle}`);
+      const marca = a.destacado ? "★ " : "";
+      const proc = procedencia(a);
+      // Se lista la pieza si aporta algo: una descripción, un análisis, o al
+      // menos de dónde salió. Un nombre de archivo de cámara solo, no.
+      if (detalle) partes.push(`  - ${marca}${a.nombre.trim()}${proc}: ${detalle}`);
+      else if (proc) partes.push(`  - ${marca}${a.nombre.trim()}${proc}`);
     }
   }
 
   const etiquetas = etiquetasDetectadas(archivos);
   if (etiquetas) partes.push(etiquetas);
 
+  const equipos = [...new Set(archivos.map((a) => a.equipo?.trim()).filter(Boolean))];
+  if (equipos.length > 0) {
+    partes.push(`- **Equipos que produjeron el material:** ${equipos.join(", ")}`);
+  }
+
+  const destacadas = archivos.filter((a) => a.destacado).length;
+  if (destacadas > 0) {
+    partes.push(`- **Piezas destacadas (★):** ${destacadas} de ${archivos.length}`);
+  }
+
   return partes.join("\n");
+}
+
+/**
+ * La grabación con la que se contó la jornada, tal cual se dijo.
+ *
+ * Va al final y con aviso: es la fuente más rica del brief —tiene matices que no
+ * caben en los campos— pero viene de una transcripción automática, con
+ * muletillas y nombres propios mal escritos.
+ */
+function seccionDictado(dictado: BriefDictado | null | undefined): string | null {
+  const texto = dictado?.transcripcion?.trim();
+  if (!texto) return null;
+  return [
+    "### Cómo lo contó el equipo (transcripción de la grabación)",
+    "Esto es lo que dijo textualmente quien cubrió la jornada, transcrito de un " +
+      "audio. Puede traer frases a medias y nombres propios mal escritos: úsalo " +
+      "para entender el tono y los detalles, no como cita literal.",
+    "",
+    texto,
+  ].join("\n");
 }
 
 /** Construye el brief completo en Markdown. Omite todo lo que esté vacío. */
@@ -182,7 +264,9 @@ export function construirBrief(
   cobertura: BriefCobertura,
   asistentes: BriefAsistente[] = [],
   archivos: BriefArchivo[] = [],
+  dictado: BriefDictado | null = null,
 ): string {
+  const totalPiezas = archivos.length;
   const ficha = [
     dato("Fecha", cobertura.fecha),
     dato("Lugar", cobertura.lugar),
@@ -191,6 +275,9 @@ export function construirBrief(
     cobertura.publico_estimado ? dato("Público estimado", cobertura.publico_estimado) : null,
     listaEtiquetas("Temas", cobertura.temas),
     listaEtiquetas("Hashtags", cobertura.hashtags),
+    asistentes.length > 0 ? dato("Personas registradas", asistentes.length) : null,
+    totalPiezas > 0 ? dato("Piezas de material", totalPiezas) : null,
+    dato("Carpeta en Drive", cobertura.drive_link),
   ].filter(Boolean);
 
   // El aviso solo aparece si de verdad hay material analizado: si no, sería una
@@ -210,6 +297,7 @@ export function construirBrief(
     bloque("Compromisos", cobertura.compromisos),
     seccionAsistentes(asistentes),
     seccionContenido(archivos),
+    seccionDictado(dictado),
   ].filter(Boolean);
 
   return secciones.join("\n\n");

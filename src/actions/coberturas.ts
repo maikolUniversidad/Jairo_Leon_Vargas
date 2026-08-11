@@ -507,23 +507,47 @@ export async function getBriefCobertura(id: string): Promise<ActionResult<{ text
   const { cobertura, files, asistentes } = await getCoberturaDetail(id);
   if (!cobertura) return { ok: false, message: "Cobertura no encontrada." };
 
+  // Se manda TODO lo que hay registrado de cada pieza. El análisis automático y
+  // la atribución existían pero no llegaban al brief, así que la IA trabajaba a
+  // ciegas sobre el material.
   const archivos = FASES.flatMap((fase) =>
     files[fase].map((f) => ({
       fase,
       nombre: f.nombre,
       mime: f.mime,
       descripcion: f.descripcion,
+      analisis: (f as unknown as { analisis?: string | null }).analisis ?? null,
+      analisis_etiquetas:
+        (f as unknown as { analisis_etiquetas?: string[] | null }).analisis_etiquetas ?? null,
+      equipo: f.equipo_nombre,
+      dispositivo: f.dispositivo,
+      responsable: f.responsable_nombre,
+      tags: f.tags,
+      destacado: f.destacado,
     })),
   );
+
+  // La grabación con la que se contó la jornada: la fuente más rica que hay.
+  const supabase = await createClient();
+  const { data: dictado } = await supabase
+    .from("cobertura_dictados")
+    .select("transcripcion, created_at")
+    .eq("cobertura_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const texto = construirBrief(
     cobertura,
     asistentes.map((a) => ({
       nombre: a.nombre,
       rol: a.rol,
-      vinculo: a.contacto_id ? "contacto" : a.ciudadano_id ? "ciudadano" : null,
+      vinculo: a.vinculo,
+      organizacion: a.organizacion,
+      enlace: a.user_id ? "usuario" : a.contacto_id ? "contacto" : a.ciudadano_id ? "ciudadano" : null,
     })),
     archivos,
+    (dictado as { transcripcion: string; created_at: string } | null) ?? null,
   );
 
   await logActivity("brief", "cobertura", id, cobertura.nombre);

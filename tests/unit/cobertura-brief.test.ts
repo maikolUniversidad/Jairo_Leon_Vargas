@@ -76,16 +76,35 @@ describe("construirBrief", () => {
 
 describe("construirBrief · asistentes", () => {
   const asistentes: BriefAsistente[] = [
-    { nombre: "Ana Ruiz", rol: "Ponente", vinculo: "contacto" },
-    { nombre: "Luis Pérez", rol: "Ponente", vinculo: null },
-    { nombre: "Carla Gómez", rol: null, vinculo: "ciudadano" },
+    { nombre: "Ana Ruiz", rol: "Ponente", vinculo: "aliado", organizacion: "JAC Kennedy" },
+    { nombre: "Luis Pérez", rol: "Camarógrafo", vinculo: "equipo" },
+    { nombre: "Carla Gómez", rol: null, vinculo: null },
   ];
 
-  it("agrupa por rol y usa «Asistentes» cuando no hay", () => {
+  it("agrupa por vínculo: equipo, aliados y el resto", () => {
     const texto = construirBrief(minima, asistentes);
     expect(texto).toContain("### Quiénes estuvieron");
-    expect(texto).toContain("**Ponente:** Ana Ruiz, Luis Pérez");
-    expect(texto).toContain("**Asistentes:** Carla Gómez");
+    expect(texto).toContain("**Del equipo (1)**");
+    expect(texto).toContain("- Luis Pérez — Camarógrafo");
+    expect(texto).toContain("**Aliados y organizaciones (1)**");
+    expect(texto).toContain("**Otros asistentes (1)**");
+  });
+
+  it("junta el rol y la organización de cada persona", () => {
+    const texto = construirBrief(minima, asistentes);
+    expect(texto).toContain("- Ana Ruiz — Ponente · JAC Kennedy");
+  });
+
+  it("sin vínculo cae en «otros», y sin rol va el nombre solo", () => {
+    const texto = construirBrief(minima, asistentes);
+    // Sin rol ni organización, la línea es solo el nombre: nada de « — » suelto.
+    expect(texto).toContain("- Carla Gómez");
+    expect(texto).not.toContain("- Carla Gómez —");
+  });
+
+  it("el equipo va antes que los aliados", () => {
+    const texto = construirBrief(minima, asistentes);
+    expect(texto.indexOf("Del equipo")).toBeLessThan(texto.indexOf("Aliados y organizaciones"));
   });
 
   it("omite la sección entera si no hay nadie", () => {
@@ -170,5 +189,99 @@ describe("construirBrief · análisis automático", () => {
   it("no inventa la sección de temas si ninguna pieza trae etiquetas", () => {
     const texto = construirBrief(minima, [], [{ ...analizado, analisis_etiquetas: [] }]);
     expect(texto).not.toContain("Temas detectados");
+  });
+});
+
+describe("construirBrief · procedencia del material", () => {
+  const minimaLocal: BriefCobertura = { nombre: "Jornada" };
+
+  it("dice de qué equipo y con qué dispositivo salió cada pieza", () => {
+    const texto = construirBrief(minimaLocal, [], [
+      {
+        fase: "crudo",
+        nombre: "DSC_0001.JPG",
+        mime: "image/jpeg",
+        descripcion: "Jairo saludando",
+        equipo: "Equipo A",
+        dispositivo: "Sony ILCE-7M3",
+        responsable: "Diego Castaño",
+      },
+    ]);
+    expect(texto).toContain("Equipo A · Sony ILCE-7M3 · resp. Diego Castaño");
+    expect(texto).toContain("Jairo saludando");
+    expect(texto).toContain("**Equipos que produjeron el material:** Equipo A");
+  });
+
+  it("lista una pieza aunque solo se sepa de dónde salió", () => {
+    // Un nombre de cámara no aporta, pero «Equipo A» sí: se lista.
+    const texto = construirBrief(minimaLocal, [], [
+      { fase: "crudo", nombre: "IMG_9182.JPG", mime: "image/jpeg", equipo: "Equipo A" },
+    ]);
+    expect(texto).toContain("IMG_9182.JPG [Equipo A]");
+  });
+
+  it("no inventa corchetes cuando no hay procedencia", () => {
+    const texto = construirBrief(minimaLocal, [], [
+      { fase: "crudo", nombre: "IMG_1.JPG", mime: "image/jpeg", descripcion: "Algo" },
+    ]);
+    expect(texto).toContain("IMG_1.JPG: Algo");
+    expect(texto).not.toContain("IMG_1.JPG [");
+  });
+
+  it("marca las piezas destacadas y las cuenta", () => {
+    const texto = construirBrief(minimaLocal, [], [
+      { fase: "crudo", nombre: "a.jpg", mime: "image/jpeg", descripcion: "x", destacado: true },
+      { fase: "crudo", nombre: "b.jpg", mime: "image/jpeg", descripcion: "y" },
+    ]);
+    expect(texto).toContain("★ a.jpg");
+    expect(texto).not.toContain("★ b.jpg");
+    expect(texto).toContain("**Piezas destacadas (★):** 1 de 2");
+  });
+
+  it("incluye las etiquetas puestas a mano en la pieza", () => {
+    const texto = construirBrief(minimaLocal, [], [
+      { fase: "crudo", nombre: "a.jpg", mime: "image/jpeg", tags: ["salud", "kennedy"] },
+    ]);
+    expect(texto).toContain("Etiquetas: salud, kennedy");
+  });
+});
+
+describe("construirBrief · transcripción del dictado", () => {
+  const minimaLocal: BriefCobertura = { nombre: "Jornada" };
+
+  it("incluye lo dicho y avisa de que viene de un audio", () => {
+    const texto = construirBrief(minimaLocal, [], [], {
+      transcripcion: "Fuimos al Palacio de Justicia y estuvo Marta Ospina.",
+    });
+    expect(texto).toContain("### Cómo lo contó el equipo");
+    expect(texto).toContain("Fuimos al Palacio de Justicia y estuvo Marta Ospina.");
+    expect(texto).toContain("no como cita literal");
+  });
+
+  it("va al final, después del material", () => {
+    const texto = construirBrief(minimaLocal, [], [], { transcripcion: "Algo dicho." });
+    expect(texto.indexOf("Material disponible")).toBeLessThan(
+      texto.indexOf("Cómo lo contó el equipo"),
+    );
+  });
+
+  it("omite la sección si no hay dictado o está vacío", () => {
+    expect(construirBrief(minimaLocal)).not.toContain("Cómo lo contó el equipo");
+    expect(construirBrief(minimaLocal, [], [], { transcripcion: "   " })).not.toContain(
+      "Cómo lo contó el equipo",
+    );
+  });
+});
+
+describe("construirBrief · conteos y enlaces", () => {
+  it("dice cuánta gente y cuánto material hay, y enlaza la carpeta de Drive", () => {
+    const texto = construirBrief(
+      { nombre: "Jornada", drive_link: "https://drive.google.com/x" },
+      [{ nombre: "Ana", vinculo: "equipo" }],
+      [{ fase: "crudo", nombre: "a.jpg", mime: "image/jpeg" }],
+    );
+    expect(texto).toContain("**Personas registradas:** 1");
+    expect(texto).toContain("**Piezas de material:** 1");
+    expect(texto).toContain("**Carpeta en Drive:** https://drive.google.com/x");
   });
 });
