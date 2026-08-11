@@ -1,6 +1,6 @@
 import "server-only";
 
-import { completeWithTools } from "./provider";
+import { MODELO_POR_DEFECTO, completeWithTools } from "./provider";
 import {
   CAMPOS_PREGUNTA,
   TIPO_CAMPO,
@@ -217,7 +217,7 @@ Reglas:
  */
 export async function extraerFicha(
   respuestas: TranscripcionPregunta[],
-  modelo = "auto",
+  modelo = MODELO_POR_DEFECTO,
 ): Promise<Extraccion> {
   const utiles = respuestas.filter((r) => r.transcripcion.trim().length > 0);
   if (utiles.length === 0) return { ficha: {}, personas: [] };
@@ -300,7 +300,7 @@ Sobre las personas:
 export async function extraerDeDictado(
   transcripcion: string,
   preguntas: { pregunta: string; campo: CampoPregunta }[],
-  modelo = "auto",
+  modelo = MODELO_POR_DEFECTO,
 ): Promise<Extraccion> {
   const texto = transcripcion.trim();
   if (!texto) return { ficha: {}, personas: [] };

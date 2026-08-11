@@ -48,8 +48,25 @@ interface Resolved {
   vision: boolean;
 }
 
+/** Modelo de texto por defecto cuando quien llama no pide uno concreto. */
+export const MODELO_POR_DEFECTO = "deepseek-chat";
+
+/**
+ * Valores que significan «el que sea»: se traducen al modelo por defecto en vez
+ * de viajar tal cual al proveedor.
+ *
+ * DeepSeek rechaza con 400 cualquier nombre que no conozca, y un centinela como
+ * "auto" parece inofensivo hasta que llega a la API. Traducirlo aquí evita que
+ * cada llamador tenga que acordarse.
+ */
+const SIN_PREFERENCIA = new Set(["", "auto", "default", "por-defecto"]);
+
 /** Resuelve endpoint/llave/modelo. Lanza un Error legible si falta la llave. */
-export function resolveProvider(modelo: string): Resolved {
+export function resolveProvider(modeloPedido: string): Resolved {
+  const modelo = SIN_PREFERENCIA.has((modeloPedido ?? "").trim().toLowerCase())
+    ? MODELO_POR_DEFECTO
+    : modeloPedido.trim();
+
   if (modelo.startsWith("gpt") || modelo.startsWith("o1") || modelo.startsWith("o3")) {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("Falta OPENAI_API_KEY para usar este modelo.");
@@ -60,7 +77,7 @@ export function resolveProvider(modelo: string): Resolved {
   return {
     url: "https://api.deepseek.com/chat/completions",
     key,
-    model: modelo || "deepseek-chat",
+    model: modelo,
     name: "deepseek",
     vision: false,
   };
