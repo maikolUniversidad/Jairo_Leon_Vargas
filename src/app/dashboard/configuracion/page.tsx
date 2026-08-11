@@ -14,6 +14,8 @@ import { listUsers } from "@/actions/usuarios";
 import { listRoles, listPermissions } from "@/actions/roles";
 import { listEquiposConIntegrantes, listUsuariosPlataforma } from "@/actions/equipos";
 import { EquiposManager } from "@/components/dashboard/equipos-manager";
+import { listTodasPreguntas } from "@/actions/preguntas";
+import { PreguntasManager } from "@/components/dashboard/preguntas-manager";
 import { getDriveStatus } from "@/actions/google";
 import { listConnections } from "@/actions/conexiones";
 import { getMisredesConfig } from "@/actions/misredes";
@@ -23,13 +25,18 @@ export default async function ConfiguracionPage() {
   // Solo admins (defensa adicional a RLS).
   await requireRole(["super_admin", "administrador"]);
 
-  const [users, roles, permissions, equipos, usuariosEquipo, driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats] =
+  const [
+    users, roles, permissions, equipos, preguntas, usuariosEquipo,
+    driveStatus, connections, misredes, kbDocs, kbConcepts, kbStats,
+  ] =
     await Promise.all([
       listUsers(),
       listRoles(),
       listPermissions(),
       // Incluye los inactivos: aquí es donde se vuelven a activar.
       listEquiposConIntegrantes(),
+      // También las inactivas, por lo mismo.
+      listTodasPreguntas(),
       listUsuariosPlataforma(),
       getDriveStatus(),
       listConnections(),
@@ -55,6 +62,9 @@ export default async function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="equipos">
           <EquiposManager equipos={equipos} usuarios={usuariosEquipo} />
+        </TabsContent>
+        <TabsContent value="preguntas">
+          <PreguntasManager preguntas={preguntas} />
         </TabsContent>
         <TabsContent value="integraciones" className="space-y-6">
           <Suspense fallback={null}>

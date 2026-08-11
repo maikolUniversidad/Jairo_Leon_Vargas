@@ -1,5 +1,6 @@
 import {
   Camera,
+  Mic,
   LayoutDashboard,
   Users,
   Contact,
@@ -105,6 +106,7 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/configuracion?tab=usuarios", label: "Usuarios", icon: Users, description: "Alta, roles y activación de usuarios del equipo." },
       { href: "/dashboard/configuracion?tab=roles", label: "Roles y permisos", icon: ShieldCheck, description: "Matriz de acceso por rol a cada módulo." },
       { href: "/dashboard/configuracion?tab=equipos", label: "Equipos", icon: Camera, description: "Equipos de grabación y fotografía a los que se atribuye el material de las coberturas." },
+      { href: "/dashboard/configuracion?tab=preguntas", label: "Cuestionario por voz", icon: Mic, description: "Preguntas que guían la grabación de una cobertura y a qué campo va cada respuesta." },
       { href: "/dashboard/configuracion?tab=integraciones", label: "Integraciones", icon: HardDrive, description: "Conexión con Google Drive y otros servicios." },
       { href: "/dashboard/configuracion?tab=conocimiento", label: "Base de conocimiento", icon: Database, description: "Sube documentos (RAG): se vectorizan como base de conocimiento del Asistente IA y se visualizan en un grafo por conceptos." },
       { href: "/dashboard/configuracion?tab=misredes", label: "Página /misredes", icon: Link2, description: "Edita la página pública de enlaces (redes, WhatsApp, prensa, campaña)." },
