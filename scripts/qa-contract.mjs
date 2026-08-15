@@ -25,7 +25,7 @@ export const MODULOS_SIEMPRE_VISIBLES = ["perfil", "ubicaciones"];
 
 export const MODULOS_ESPERADOS = [
   "panel", "ciudadanos", "contactos", "solicitudes", "tareas", "calendario",
-  "territorio", "comunicaciones", "documentos", "reportes", "auditoria",
+  "territorio", "comunicaciones", "inventario", "documentos", "reportes", "auditoria",
   "ia", "notificaciones", "configuracion",
 ];
 
@@ -37,6 +37,7 @@ export const BUCKETS_ESPERADOS = {
   "contact-files": { publico: true },
   contenido: { publico: true },
   documentos: { publico: false },
+  inventario: { publico: true },
   "task-files": { publico: true },
   "workspace-covers": { publico: true },
 };

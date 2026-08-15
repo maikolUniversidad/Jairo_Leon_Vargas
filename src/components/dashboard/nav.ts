@@ -29,6 +29,9 @@ import {
   Link2,
   Database,
   Palette,
+  Boxes,
+  PackageOpen,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +85,17 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/comunicaciones/calendario", label: "Calendario editorial", icon: CalendarRange, description: "Programa piezas por canal y fecha, con responsable y estado." },
       { href: "/dashboard/comunicaciones/monitoreo", label: "Monitoreo de personas", icon: Radar, description: "Recopila noticias, menciones y publicaciones sobre figuras públicas y etiquétalas (aliado, contraposición, senador…)." },
       { href: "/dashboard/comunicaciones/equipos", label: "Equipos de cobertura", icon: Users, description: "Quién graba y quién fotografía. El material que se sube a una cobertura se atribuye a un equipo." },
+    ],
+  },
+  {
+    href: "/dashboard/inventario",
+    label: "Inventario",
+    icon: Boxes,
+    module: "inventario",
+    submodules: [
+      { href: "/dashboard/inventario?vista=equipos", label: "Equipos", icon: Boxes, description: "Catálogo de equipos (cámaras, lentes, micrófonos…) con su estado, condición, piezas y partes." },
+      { href: "/dashboard/inventario?vista=prestamos", label: "Préstamos", icon: PackageOpen, description: "Entrega y devolución de equipos con video de recepción, historial de quién lo tuvo y checklist de partes." },
+      { href: "/dashboard/inventario?vista=novedades", label: "Novedades", icon: Wrench, description: "Accidentes, daños, mantenimiento y pérdidas registrados sobre los equipos." },
     ],
   },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText, module: "documentos" },

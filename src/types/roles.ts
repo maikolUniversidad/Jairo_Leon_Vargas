@@ -52,6 +52,7 @@ export type DashboardModule =
   | "calendario"
   | "territorio"
   | "comunicaciones"
+  | "inventario"
   | "documentos"
   | "reportes"
   | "auditoria"
@@ -112,6 +113,9 @@ export const MODULE_ACCESS: Record<DashboardModule, AppRole[] | "*"> = {
     "coordinador_utl",
     "comunicaciones",
   ],
+  // Inventario de equipos: todo el staff puede verlo y solicitar préstamos; la
+  // gestión (crear/editar/prestar) la limita la RLS a can_manage_inventario().
+  inventario: "*",
   documentos: [
     "super_admin",
     "administrador",
@@ -174,6 +178,7 @@ export const MODULE_LABELS: Record<DashboardModule, string> = {
   calendario: "Calendario",
   territorio: "Territorio",
   comunicaciones: "Comunicaciones",
+  inventario: "Inventario",
   documentos: "Documentos",
   reportes: "Reportes",
   auditoria: "Auditoría",
