@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { collectNoticiasLugar } from "@/lib/monitoring/collectors";
+import { cacheVencida, consultaZona, zonaKey, type Zona } from "@/lib/territorio";
 import { type ActionResult } from "./types";
 import type { Zone, ZoneType, Task } from "@/types/database";
 
@@ -147,4 +149,119 @@ export async function addZoneLeader(input: {
   if (error) return { ok: false, message: "No se pudo agregar el líder (¿permisos?)." };
   revalidatePath("/dashboard/territorio");
   return { ok: true, message: "Líder agregado." };
+}
+
+/* ═════════════════ Noticias por zona (mapa nacional) ═════════════════ */
+
+/**
+ * Lo que dice la prensa sobre una zona del país.
+ *
+ * Colombia tiene 1.122 municipios: recolectarlos todos de antemano sería
+ * absurdo y consultarlos en cada clic, lento. Se consulta al seleccionar la
+ * zona y se guarda unas horas en `territorio_noticias`.
+ */
+
+export interface NoticiaZona {
+  titulo: string;
+  url: string;
+  fuente?: string;
+  published_at?: string;
+}
+
+export interface NoticiasZona {
+  items: NoticiaZona[];
+  total: number;
+  recolectado_en: string;
+  /** true si salió de la caché, sin ir a la prensa. */
+  desde_cache: boolean;
+  consulta: string;
+}
+
+export async function getNoticiasZona(
+  zona: Zona,
+  forzar = false,
+): Promise<ActionResult<NoticiasZona>> {
+  const supabase = await createClient();
+  const key = zonaKey(zona);
+
+  const { data: cache } = await supabase
+    .from("territorio_noticias")
+    .select("items, total, recolectado_en, consulta")
+    .eq("zona_key", key)
+    .maybeSingle();
+
+  const guardada = cache as
+    | { items: NoticiaZona[]; total: number; recolectado_en: string; consulta: string | null }
+    | null;
+
+  if (!forzar && guardada && !cacheVencida(guardada.recolectado_en)) {
+    return {
+      ok: true,
+      message: "ok",
+      data: {
+        items: guardada.items ?? [],
+        total: guardada.total ?? 0,
+        recolectado_en: guardada.recolectado_en,
+        desde_cache: true,
+        consulta: guardada.consulta ?? "",
+      },
+    };
+  }
+
+  const consulta = consultaZona(zona);
+  const res = await collectNoticiasLugar(consulta);
+
+  if (res.items.length === 0) {
+    // Si la consulta falló pero hay algo guardado, se devuelve lo viejo con su
+    // fecha: una lista desactualizada sirve más que una pantalla vacía.
+    if (guardada) {
+      return {
+        ok: true,
+        message: "No se pudo actualizar; se muestra lo último recolectado.",
+        data: {
+          items: guardada.items ?? [],
+          total: guardada.total ?? 0,
+          recolectado_en: guardada.recolectado_en,
+          desde_cache: true,
+          consulta: guardada.consulta ?? consulta,
+        },
+      };
+    }
+    const falló = res.status.startsWith("error");
+    return {
+      ok: false,
+      message: falló
+        ? "No se pudo consultar la prensa en este momento."
+        : "No hay noticias recientes de esta zona.",
+    };
+  }
+
+  const items: NoticiaZona[] = res.items.map((i) => ({
+    titulo: i.titulo,
+    url: i.url,
+    fuente: i.autor,
+    published_at: i.published_at,
+  }));
+  const recolectado_en = new Date().toISOString();
+
+  await supabase.from("territorio_noticias").upsert(
+    {
+      zona_key: key,
+      nivel: zona.nivel,
+      codigo: zona.codigo,
+      nombre: zona.nombre,
+      departamento: zona.departamento ?? null,
+      items,
+      total: items.length,
+      consulta,
+      recolectado_en,
+    },
+    { onConflict: "zona_key" },
+  );
+
+  return {
+    ok: true,
+    message: "ok",
+    data: { items, total: items.length, recolectado_en, desde_cache: false, consulta },
+  };
 }

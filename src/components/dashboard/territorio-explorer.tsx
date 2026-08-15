@@ -24,6 +24,7 @@ import { useTabParam } from "@/hooks/use-tab-param";
 import { cn } from "@/lib/utils";
 import { LOCALIDADES } from "@/lib/validations";
 import { GEO_SOURCES, normalizeName, type GeoLayerSource } from "@/lib/geo-sources";
+import { TerritorioNoticias } from "@/components/dashboard/territorio-noticias";
 import { TerritorioMap, type AreaHighlight } from "@/components/dashboard/territorio-map";
 import { TASK_STATUS_LABELS, type Zone, type ZoneType } from "@/types/database";
 import {
@@ -52,6 +53,7 @@ const TABS: { key: string; source: GeoLayerSource }[] = [
   { key: "bogota_localidades", source: GEO_SOURCES.bogota_localidades },
   { key: "bogota_barrios", source: GEO_SOURCES.bogota_barrios },
   { key: "colombia_departamentos", source: GEO_SOURCES.colombia_departamentos },
+  { key: "colombia_municipios", source: GEO_SOURCES.colombia_municipios },
 ];
 
 const CAPA_KEYS = TABS.map((t) => t.key) as [string, ...string[]];
@@ -70,7 +72,12 @@ export function TerritorioExplorer({
   const router = useRouter();
   const [capa, setCapa] = useTabParam("capa", CAPA_KEYS[0], CAPA_KEYS);
   const tab = TABS.find((t) => t.key === capa) ?? TABS[0]!;
-  const [selected, setSelected] = useState<{ name: string; code: string | null; tipo: GeoLayerSource["tipo"] } | null>(null);
+  const [selected, setSelected] = useState<{
+    name: string;
+    code: string | null;
+    tipo: GeoLayerSource["tipo"];
+    padre?: string | null;
+  } | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [, start] = useTransition();
 
@@ -92,8 +99,13 @@ export function TerritorioExplorer({
     return m;
   }, [zones, taskCounts]);
 
-  function selectArea(name: string, code: string | null, tipo: GeoLayerSource["tipo"]) {
-    setSelected({ name, code, tipo });
+  function selectArea(
+    name: string,
+    code: string | null,
+    tipo: GeoLayerSource["tipo"],
+    padre?: string | null,
+  ) {
+    setSelected({ name, code, tipo, padre });
     setDetail(null);
     const existing = zones.find(
       (z) => normalizeName(z.nombre_zona) === normalizeName(name) && z.tipo_zona === tipo,
@@ -186,7 +198,7 @@ function AreaPanel({
   canManage,
   onChanged,
 }: {
-  area: { name: string; code: string | null; tipo: GeoLayerSource["tipo"] };
+  area: { name: string; code: string | null; tipo: GeoLayerSource["tipo"]; padre?: string | null };
   detail: Detail | null;
   nameById: Map<string, string>;
   profiles: Persona[];
@@ -240,8 +252,20 @@ function AreaPanel({
             <MapPinned className="size-5 text-primary" />
             <h3 className="text-lg font-bold">{area.name}</h3>
           </div>
-          <p className="text-xs capitalize text-muted-foreground">{area.tipo}</p>
+          <p className="text-xs capitalize text-muted-foreground">
+            {area.tipo}
+            {area.padre ? ` · ${area.padre}` : ""}
+          </p>
         </div>
+
+        {/* Lo que dice la prensa de esta zona. Va arriba: es el contexto con el
+            que se decide qué tarea vale la pena crear. */}
+        <TerritorioNoticias
+          nombre={area.name}
+          codigo={area.code}
+          tipo={area.tipo}
+          padre={area.padre}
+        />
 
         {detail === null ? (
           <p className="text-sm text-muted-foreground">Cargando…</p>

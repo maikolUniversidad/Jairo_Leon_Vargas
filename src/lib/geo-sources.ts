@@ -8,7 +8,15 @@
 export interface GeoLayerSource {
   key: string;
   label: string;
-  tipo: "localidad" | "barrio" | "departamento";
+  tipo: "localidad" | "barrio" | "departamento" | "municipio";
+  /**
+   * Nombre del objeto dentro de un TopoJSON. Si está, el archivo se convierte a
+   * GeoJSON al cargarlo: los 1.122 municipios pesan 0.5 MB en TopoJSON y unos
+   * 15 MB en GeoJSON, porque TopoJSON comparte las aristas entre vecinos.
+   */
+  topoObject?: string;
+  /** Propiedades que dicen a qué zona superior pertenece (municipio → depto). */
+  parentKeys?: string[];
   /** URLs candidatas en orden de preferencia (local → remoto). */
   urls: string[];
   /** Posibles nombres de propiedad que contienen el nombre del polígono. */
@@ -39,6 +47,16 @@ export const GEO_SOURCES = {
     ],
     nameKeys: ["SCANOMBRE", "barrio", "NOMBRE", "nombre", "Nombre", "barriocomu", "NOM_BARRIO"],
     codeKeys: ["SCACODIGO", "codigo", "CODIGO", "id", "barriocod"],
+  },
+  colombia_municipios: {
+    key: "colombia_municipios",
+    label: "Colombia · Municipios",
+    tipo: "municipio",
+    topoObject: "mpios",
+    urls: ["/geo/colombia-municipios.topo.json"],
+    nameKeys: ["name", "NOMBRE_MPI", "MPIO_CNMBR", "nombre", "municipio"],
+    codeKeys: ["id", "MPIO_CCNCT", "DPTOMPIO", "codigo"],
+    parentKeys: ["dpt", "DPTO_CNMBR", "departamento", "NOMBRE_DPT"],
   },
   colombia_departamentos: {
     key: "colombia_departamentos",

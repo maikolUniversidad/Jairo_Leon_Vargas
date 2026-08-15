@@ -31,7 +31,13 @@ export function TerritorioMap({
 }: {
   source: GeoLayerSource;
   highlight: Map<string, AreaHighlight>;
-  onSelect: (name: string, code: string | null, tipo: GeoLayerSource["tipo"]) => void;
+  onSelect: (
+    name: string,
+    code: string | null,
+    tipo: GeoLayerSource["tipo"],
+    /** Zona superior, si la capa la trae: el departamento de un municipio. */
+    padre?: string | null,
+  ) => void;
 }) {
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -88,6 +94,16 @@ export function TerritorioMap({
       if (cancelled) return;
       if (!data) { setStatus("error"); return; }
 
+      // Un TopoJSON trae las aristas compartidas entre polígonos vecinos: pesa
+      // 30 veces menos que el GeoJSON equivalente, pero Leaflet no lo entiende.
+      if (source.topoObject && data.type === "Topology") {
+        const { feature } = await import("topojson-client");
+        const objeto = data.objects?.[source.topoObject];
+        if (!objeto) { setStatus("error"); return; }
+        data = feature(data, objeto);
+        if (cancelled) return;
+      }
+
       geoRef.current = L.geoJSON(data, {
         style: (f: any) => styleFor(featureName(f.properties ?? {}, source.nameKeys)),
         onEachFeature: (f: any, layer: any) => {
@@ -96,7 +112,10 @@ export function TerritorioMap({
           layer.bindTooltip(name, { sticky: true });
           layer.on("mouseover", () => layer.setStyle({ weight: 3, fillOpacity: 0.7 }));
           layer.on("mouseout", () => layer.setStyle(styleFor(name)));
-          layer.on("click", () => onSelectRef.current(name, code, source.tipo));
+          const padre = source.parentKeys
+            ? featureCode(f.properties ?? {}, source.parentKeys)
+            : null;
+          layer.on("click", () => onSelectRef.current(name, code, source.tipo, padre));
         },
       }).addTo(mapRef.current);
 

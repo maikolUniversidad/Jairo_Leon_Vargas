@@ -69,7 +69,8 @@ export const DASHBOARD_NAV: NavItem[] = [
     submodules: [
       { href: "/dashboard/territorio?capa=bogota_localidades", label: "Bogotá · Localidades", icon: MapPinned, description: "Mapa por localidades y sus tareas." },
       { href: "/dashboard/territorio?capa=bogota_barrios", label: "Bogotá · Barrios", icon: Map, description: "Detalle por barrios de la ciudad." },
-      { href: "/dashboard/territorio?capa=colombia_departamentos", label: "Colombia · Departamentos", icon: Flag, description: "Mapa nacional por departamentos." },
+      { href: "/dashboard/territorio?capa=colombia_departamentos", label: "Colombia · Departamentos", icon: Flag, description: "Mapa nacional por departamentos. Al seleccionar uno trae lo que dice la prensa de esa zona." },
+      { href: "/dashboard/territorio?capa=colombia_municipios", label: "Colombia · Municipios", icon: MapPinned, description: "Los 1.122 municipios del país. Selecciona uno para ver los titulares recientes de esa zona." },
     ],
   },
   {

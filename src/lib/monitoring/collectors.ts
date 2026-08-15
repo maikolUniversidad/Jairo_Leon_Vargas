@@ -130,6 +130,35 @@ async function collectGoogleNews(t: MonitorTarget, mode: CollectMode = "recent")
   }
 }
 
+/**
+ * Noticias de un lugar.
+ *
+ * Va directo al RSS con la consulta tal cual: `consultaZona` ya decidió cuándo
+ * hay que desambiguar con el departamento y ya puso las comillas. Pasar por
+ * `collectGoogleNews` la volvería a envolver —`("\"Medellín\" Colombia")`— y
+ * Google la leería como una sola frase literal, que no devuelve nada.
+ */
+export async function collectNoticiasLugar(
+  consulta: string,
+  max = 40,
+): Promise<SourceResult> {
+  try {
+    const url =
+      `https://news.google.com/rss/search?q=${encodeURIComponent(consulta)}` +
+      `&hl=es-419&gl=CO&ceid=CO:es-419`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 UTL360-Territorio" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return { fuente: "noticia", status: `error:${res.status}`, items: [] };
+
+    const items = parseRss(await res.text()).slice(0, max);
+    return { fuente: "noticia", status: `ok:${items.length}`, items };
+  } catch (e) {
+    return { fuente: "noticia", status: `error:${(e as Error).message.slice(0, 60)}`, items: [] };
+  }
+}
+
 /* ─────────────── Fuente: X (Twitter) API v2 — opcional ─────────────── */
 
 async function collectX(t: MonitorTarget, mode: CollectMode = "recent"): Promise<SourceResult> {
