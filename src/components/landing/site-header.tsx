@@ -26,7 +26,7 @@ export function SiteHeader() {
       <div className="h-1 w-full bg-franja" />
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="Inicio — Jairo León Vargas">
-          <LogoJLV priority className="h-10" />
+          <LogoJLV variant="compact" priority className="h-10" />
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">

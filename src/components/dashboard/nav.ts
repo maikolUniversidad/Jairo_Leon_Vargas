@@ -28,6 +28,7 @@ import {
   Bot,
   Link2,
   Database,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 
@@ -110,6 +111,7 @@ export const DASHBOARD_NAV: NavItem[] = [
       { href: "/dashboard/configuracion?tab=integraciones", label: "Integraciones", icon: HardDrive, description: "Conexión con Google Drive y otros servicios." },
       { href: "/dashboard/configuracion?tab=conocimiento", label: "Base de conocimiento", icon: Database, description: "Sube documentos (RAG): se vectorizan como base de conocimiento del Asistente IA y se visualizan en un grafo por conceptos." },
       { href: "/dashboard/configuracion?tab=misredes", label: "Página /misredes", icon: Link2, description: "Edita la página pública de enlaces (redes, WhatsApp, prensa, campaña)." },
+      { href: "/dashboard/configuracion?tab=marca", label: "Manual de marca", icon: Palette, description: "Logo en sus distintas vistas, paleta de color, franja y tipografía de la marca Jairo León." },
       { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell, description: "Bandeja completa de alertas y avisos del sistema (también en la campana del encabezado)." },
       { href: "/dashboard/perfil", label: "Mi perfil", icon: UserCircle, description: "Tus datos, avatar y preferencias de cuenta (también en el avatar del encabezado)." },
     ],

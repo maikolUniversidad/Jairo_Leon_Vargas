@@ -114,7 +114,7 @@ export function Sidebar({ viewableModules }: { viewableModules: string[] }) {
     <aside className="hidden w-64 shrink-0 flex-col bg-secondary text-white lg:flex">
       <div className="h-1 w-full bg-franja" />
       <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
-        <LogoJLV className="h-9" />
+        <LogoJLV variant="compact" className="h-9" />
         <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/80">
           UTL 360
         </span>

@@ -3,7 +3,7 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTabParam } from "@/hooks/use-tab-param";
 
-const TABS = ["usuarios", "roles", "equipos", "preguntas", "integraciones", "conocimiento", "misredes"] as const;
+const TABS = ["usuarios", "roles", "equipos", "preguntas", "integraciones", "conocimiento", "misredes", "marca"] as const;
 
 /**
  * Tabs de Configuración controlados por el query param `?tab=`, para que los
@@ -26,6 +26,7 @@ export function ConfiguracionTabs({ children }: { children: React.ReactNode }) {
         <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
         <TabsTrigger value="conocimiento">Base de conocimiento</TabsTrigger>
         <TabsTrigger value="misredes">Página /misredes</TabsTrigger>
+        <TabsTrigger value="marca">Manual de marca</TabsTrigger>
       </TabsList>
       {children}
     </Tabs>

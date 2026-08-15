@@ -1,16 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#8e378e"/>
-  <text x="50%" y="44%" dominant-baseline="middle" text-anchor="middle"
-        font-family="Segoe UI, Arial, sans-serif" font-size="205" font-weight="900" fill="#ffffff">JLV</text>
-  <text x="50%" y="63%" dominant-baseline="middle" text-anchor="middle"
-        font-family="Segoe UI, Arial, sans-serif" font-size="54" font-weight="700"
-        letter-spacing="6" fill="#f3d9f3">UTL 360</text>
-  <!-- Franja multicolor de marca -->
+  <rect width="512" height="512" rx="113" fill="#171226"/>
+  <!-- Isotipo: los cinco puntos de la marca (amarillo · azul · rojo · verde · morado) -->
   <g>
-    <rect x="131" y="372" width="50" height="20" rx="6" fill="#f49a20"/>
-    <rect x="181" y="372" width="50" height="20" rx="6" fill="#2a3883"/>
-    <rect x="231" y="372" width="50" height="20" rx="6" fill="#e92025"/>
-    <rect x="281" y="372" width="50" height="20" rx="6" fill="#35a74a"/>
-    <rect x="331" y="372" width="50" height="20" rx="6" fill="#921b4c"/>
+    <circle cx="100" cy="256" r="34" fill="#f49a20"/>
+    <circle cx="178" cy="256" r="34" fill="#2a3883"/>
+    <circle cx="256" cy="256" r="34" fill="#e92025"/>
+    <circle cx="334" cy="256" r="34" fill="#35a74a"/>
+    <circle cx="412" cy="256" r="34" fill="#8e378e"/>
   </g>
 </svg>

@@ -9,6 +9,7 @@ import { RolesManager } from "@/components/dashboard/roles-manager";
 import { GoogleDriveCard } from "@/components/dashboard/google-drive-card";
 import { ConexionesManager } from "@/components/dashboard/conexiones-manager";
 import { MisredesManager } from "@/components/dashboard/misredes-manager";
+import { ManualDeMarca } from "@/components/dashboard/manual-de-marca";
 import { ConocimientoManager } from "@/components/dashboard/kb/ConocimientoManager";
 import { listUsers } from "@/actions/usuarios";
 import { listRoles, listPermissions } from "@/actions/roles";
@@ -77,6 +78,9 @@ export default async function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="misredes">
           <MisredesManager initial={misredes} />
+        </TabsContent>
+        <TabsContent value="marca">
+          <ManualDeMarca />
         </TabsContent>
       </ConfiguracionTabs>
     </>
