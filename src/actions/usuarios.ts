@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { newUserSchema } from "@/lib/validations";
 import { type ActionResult, zodToFieldErrors } from "./types";
 
@@ -133,4 +135,90 @@ export async function toggleUserActive(userId: string, active: boolean): Promise
   if (error) return { ok: false, message: "No se pudo actualizar." };
   revalidatePath("/dashboard/configuracion");
   return { ok: true, message: active ? "Usuario activado." : "Usuario desactivado." };
+}
+
+/* ═══════════════ Edición de la ficha y la contraseña (solo admin) ═══════════════ */
+
+const perfilSchema = z.object({
+  full_name: z.string().trim().min(2, "Escribe el nombre").max(160),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  cargo: z.string().trim().max(120).optional().or(z.literal("")),
+  avatar_url: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+/** Actualiza la ficha de cualquier usuario, foto incluida. Solo admin. */
+export async function updateUserProfile(
+  userId: string,
+  input: unknown,
+): Promise<ActionResult> {
+  if (!(await assertAdmin())) return { ok: false, message: "No autorizado." };
+
+  const parsed = perfilSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los campos.", fieldErrors: zodToFieldErrors(parsed.error) };
+  }
+
+  // Con el cliente admin: la RLS de `profiles` deja a cada quien editar el suyo
+  // y a los admin editar cualquiera, pero aquí ya se comprobó el permiso.
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      full_name: parsed.data.full_name,
+      phone: parsed.data.phone || null,
+      cargo: parsed.data.cargo || null,
+      avatar_url: parsed.data.avatar_url || null,
+    })
+    .eq("id", userId);
+  if (error) return { ok: false, message: "No se pudo actualizar la ficha." };
+
+  revalidatePath("/dashboard/configuracion");
+  return { ok: true, message: "Ficha actualizada." };
+}
+
+/**
+ * Asigna una contraseña nueva a un usuario. Solo admin.
+ *
+ * La contraseña anterior NO se puede consultar —Supabase guarda un hash de una
+ * sola vía—, así que esto la reemplaza. Cambiarla cierra las sesiones abiertas
+ * de esa persona, que es lo que se espera al restablecer un acceso.
+ */
+export async function setUserPassword(
+  userId: string,
+  password: string,
+): Promise<ActionResult> {
+  if (!(await assertAdmin())) return { ok: false, message: "No autorizado." };
+
+  if (typeof password !== "string" || password.length < 6) {
+    return {
+      ok: false,
+      message: "Revisa los campos.",
+      fieldErrors: { password: "Mínimo 6 caracteres." },
+    };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) return { ok: false, message: "No se pudo cambiar la contraseña." };
+
+  await logActivity("clave", "usuario", userId, "Contraseña restablecida por un administrador");
+  return { ok: true, message: "Contraseña actualizada. Avísale a la persona." };
+}
+
+/**
+ * Manda el correo de recuperación para que la persona ponga su propia clave.
+ * Es la vía preferible: la contraseña no pasa por nadie más.
+ */
+export async function sendPasswordRecovery(email: string): Promise<ActionResult> {
+  if (!(await assertAdmin())) return { ok: false, message: "No autorizado." };
+  if (!email?.trim()) return { ok: false, message: "El usuario no tiene correo." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: email.trim(),
+  });
+  if (error) return { ok: false, message: "No se pudo enviar el correo de recuperación." };
+
+  return { ok: true, message: "Correo de recuperación enviado." };
 }

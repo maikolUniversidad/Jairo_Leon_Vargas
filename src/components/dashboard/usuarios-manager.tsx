@@ -4,10 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
-import { UserPlus, Check, X } from "lucide-react";
+import { UserPlus, Check, Pencil, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UsuarioEditarDialog } from "@/components/dashboard/usuario-editar-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldErrorSummary, useFieldErrors } from "@/components/ui/field";
 import { initials } from "@/lib/utils";
@@ -50,6 +51,8 @@ export function UsuariosManager({
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [roleKey, setRoleKey] = useState(roles[0]?.key ?? "");
+  /** Usuario que se está editando en el diálogo. */
+  const [editando, setEditando] = useState<ManagedUser | null>(null);
 
   return (
     <div className="space-y-6">
@@ -167,6 +170,15 @@ export function UsuariosManager({
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mr-1"
+                      onClick={() => setEditando(u)}
+                      aria-label={`Editar a ${u.full_name ?? u.email ?? "usuario"}`}
+                    >
+                      <Pencil className="size-3.5" /> Editar
+                    </Button>
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
@@ -186,6 +198,13 @@ export function UsuariosManager({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Radix lo lleva al body: dónde se declare no afecta al layout. */}
+      <UsuarioEditarDialog
+        usuario={editando}
+        abierto={editando !== null}
+        onCerrar={() => setEditando(null)}
+      />
     </div>
   );
 }
